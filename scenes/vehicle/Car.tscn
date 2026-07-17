@@ -1,0 +1,59 @@
+[gd_scene load_steps=7 format=3]
+
+[ext_resource type="Script" path="res://scripts/vehicle/ArcadeCar.gd" id="1_car"]
+[ext_resource type="Resource" path="res://resources/cars/default_car.tres" id="2_profile"]
+[ext_resource type="Script" path="res://scripts/vehicle/CarBody.gd" id="3_body"]
+[ext_resource type="Script" path="res://scripts/vehicle/CarAudio.gd" id="4_audio"]
+[ext_resource type="Script" path="res://scripts/vehicle/CarFX.gd" id="5_fx"]
+
+[sub_resource type="BoxShape3D" id="Shape_body"]
+size = Vector3(0.84, 0.33, 1.74)
+
+[node name="Car" type="RigidBody3D"]
+mass = 1200.0
+gravity_scale = 0.0
+can_sleep = false
+continuous_cd = true
+collision_layer = 2
+collision_mask = 11
+contact_monitor = true
+max_contacts_reported = 4
+linear_damp = 0.05
+angular_damp = 0.4
+script = ExtResource("1_car")
+gravity_direction = Vector3(0, -1, 0)
+profile = ExtResource("2_profile")
+
+[node name="Collision" type="CollisionShape3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.06, 0)
+shape = SubResource("Shape_body")
+
+[node name="Visual" type="Node3D" parent="."]
+transform = Transform3D(0.6, 0, 0, 0, 0.6, 0, 0, 0, 0.6, 0, 0, 0)
+script = ExtResource("3_body")
+
+[node name="Audio" type="Node3D" parent="."]
+script = ExtResource("4_audio")
+
+[node name="FX" type="Node3D" parent="."]
+script = ExtResource("5_fx")
+
+[node name="RayFL" type="RayCast3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.37, 0, -0.63)
+target_position = Vector3(0, -0.51, 0)
+collision_mask = 1
+
+[node name="RayFR" type="RayCast3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.37, 0, -0.63)
+target_position = Vector3(0, -0.51, 0)
+collision_mask = 1
+
+[node name="RayRL" type="RayCast3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.37, 0, 0.63)
+target_position = Vector3(0, -0.51, 0)
+collision_mask = 1
+
+[node name="RayRR" type="RayCast3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.37, 0, 0.63)
+target_position = Vector3(0, -0.51, 0)
+collision_mask = 1

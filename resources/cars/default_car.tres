@@ -1,0 +1,33 @@
+[gd_resource type="Resource" script_class="CarProfile" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/vehicle/CarProfile.gd" id="1_profile"]
+
+[sub_resource type="Curve" id="Curve_engine"]
+_data = [Vector2(0, 1), 0.0, 0.0, 1, 1, Vector2(0.75, 0.6), 0.0, 0.0, 1, 1, Vector2(1, 0), 0.0, 0.0, 1, 1]
+point_count = 3
+
+[resource]
+script = ExtResource("1_profile")
+display_name = "Kestrel 9"
+tagline = "Balanced all-rounder"
+body_color = Color(0.85, 0.11, 0.13, 1)
+mass = 1200.0
+engine_force = 16000.0
+engine_force_curve = SubResource("Curve_engine")
+max_speed = 55.0
+brake_force = 20000.0
+reverse_force = 8000.0
+grip = 0.12
+steer_speed_low = 2.4
+steer_speed_high = 1.1
+turn_responsiveness = 12.0
+handbrake_grip_mult = 0.25
+offtrack_speed_frac = 0.3
+offtrack_drag = 0.8
+suspension_rest = 0.21
+spring_k = 50000.0
+damping = 4000.0
+wheel_radius = 0.162
+gravity_blend_speed = 6.0
+align_gain = 6.0
+align_responsiveness = 8.0

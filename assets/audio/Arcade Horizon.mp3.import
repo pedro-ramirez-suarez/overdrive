@@ -1,0 +1,19 @@
+[remap]
+
+importer="mp3"
+type="AudioStreamMP3"
+uid="uid://dlentu3ude1e5"
+path="res://.godot/imported/Arcade Horizon.mp3-f43cf369e0f99c8c674e00f0d0034732.mp3str"
+
+[deps]
+
+source_file="res://assets/audio/Arcade Horizon.mp3"
+dest_files=["res://.godot/imported/Arcade Horizon.mp3-f43cf369e0f99c8c674e00f0d0034732.mp3str"]
+
+[params]
+
+loop=false
+loop_offset=0
+bpm=0
+beat_count=0
+bar_beats=4

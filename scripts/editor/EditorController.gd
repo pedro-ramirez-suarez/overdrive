@@ -363,7 +363,7 @@ func _build_ui() -> void:
 
 	# Help (bottom-right).
 	var help := Label.new()
-	help.text = "Orbit: middle-drag or Q/E   Pan: arrows / WASD   Up/Down: Z/X   Zoom: wheel   (hover a button for its name)\nPlace (click again to rotate): left-click   Delete: Del   Rotate: T / right-click   Tile elevation: PgUp/PgDn"
+	help.text = "Mouse/keys — Orbit: middle-drag or Q/E   Pan: WASD   Up/Down: Z/X   Zoom: wheel   Place: click   Delete: Del   Rotate: T\nController — Move: L-stick   Pan: R-stick   Orbit: LB/RB   Zoom: triggers   Place: A   Delete: X   Rotate: B   Piece: D-pad ◄►   Tool: Y   Elevation: D-pad ▲▼"
 	help.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	help.anchor_left = 1.0
 	help.anchor_right = 1.0
@@ -381,8 +381,12 @@ func _build_ui() -> void:
 # --- Per-frame update -------------------------------------------------------
 
 func _process(delta: float) -> void:
+	_handle_controller(delta)
 	_handle_pan(delta)
-	_update_hovered_cell()
+	# The controller drives the cell cursor directly; only fall back to the mouse
+	# ray-pick when the controller isn't steering.
+	if not _pad_cursor:
+		_update_hovered_cell()
 	# Paint while the button is held. Gated on _dragging (set only by a press that
 	# reached the 3D view) so a click on a palette button never starts a stroke.
 	if _dragging and _tool != Tool.TILE and _tool != Tool.PROP:
@@ -400,13 +404,113 @@ func _process(delta: float) -> void:
 			_reseat_props()
 
 
+# --- Controller ------------------------------------------------------------
+# Xbox-style pad: left stick moves the cell cursor, D-pad left/right cycles the
+# selected piece, Y cycles the tool, A places, X deletes, B rotates, D-pad up/down
+# raises/lowers, bumpers orbit, triggers zoom, right stick pans. (Face buttons and
+# elevation come through the action map; the rest is read here.)
+
+const PAD := 0  # first connected device
+var _pad_cursor := false
+var _pad_move_cd := 0.0
+var _pad_dpad_l := false
+var _pad_dpad_r := false
+var _pad_y := false
+
+
+func _handle_controller(delta: float) -> void:
+	# Left stick steps the cursor one cell at a time, repeating while held, in the
+	# camera's facing frame so "up" always moves away from the view.
+	var stick := Vector2(
+		Input.get_joy_axis(PAD, JOY_AXIS_LEFT_X), Input.get_joy_axis(PAD, JOY_AXIS_LEFT_Y))
+	_pad_move_cd -= delta
+	if stick.length() > 0.55:
+		if _pad_move_cd <= 0.0:
+			var world: Vector3 = Basis(Vector3.UP, _cam_yaw) * Vector3(stick.x, 0.0, stick.y)
+			var d: Vector2i
+			if absf(world.x) > absf(world.z):
+				d = Vector2i(1 if world.x > 0.0 else -1, 0)
+			else:
+				d = Vector2i(0, 1 if world.z > 0.0 else -1)
+			_hovered_cell += d
+			_pad_cursor = true
+			_pad_move_cd = 0.14
+	else:
+		_pad_move_cd = 0.0
+
+	# D-pad left/right cycles the selected piece; Y cycles the tool. Edge-detected
+	# so one press is one step.
+	var dl := Input.is_joy_button_pressed(PAD, JOY_BUTTON_DPAD_LEFT)
+	var dr := Input.is_joy_button_pressed(PAD, JOY_BUTTON_DPAD_RIGHT)
+	if dr and not _pad_dpad_r:
+		_cycle_selection(1)
+	if dl and not _pad_dpad_l:
+		_cycle_selection(-1)
+	_pad_dpad_l = dl
+	_pad_dpad_r = dr
+
+	var y := Input.is_joy_button_pressed(PAD, JOY_BUTTON_Y)
+	if y and not _pad_y:
+		_cycle_tool()
+	_pad_y = y
+
+
+## Cycle the current tool's selectable variant — tile pieces and scenery kinds.
+func _cycle_selection(dir: int) -> void:
+	if _tool == Tool.TILE:
+		_select_def(posmod(_def_index + dir, _library.ordered.size()))
+	elif _tool == Tool.PROP:
+		var n: int = PropGeo.KIND_IDS.size()
+		_prop_kind = posmod(_prop_kind + dir, n)
+		_prop_variant = 0
+		_tool = Tool.PROP
+		_refresh_palette_highlight()
+		_update_status()
+
+
+## Step through the tools with the Y button.
+func _cycle_tool() -> void:
+	var order := [Tool.TILE, Tool.PROP, Tool.ERASE, Tool.RAISE, Tool.LOWER, Tool.LEVEL, Tool.LAKE]
+	var next: int = order[posmod(order.find(_tool) + 1, order.size())]
+	if next == Tool.TILE:
+		_select_def(_def_index)
+	elif next == Tool.PROP:
+		_select_prop(_prop_kind)
+	else:
+		_select_tool(next)
+
+
+## Right-click / B / T: change the selected shape without drawing — rotate a tile,
+## cycle a prop's shape, or sample a height for the level tool.
+func _cycle_shape() -> void:
+	if _tool == Tool.LEVEL:
+		_level_target = _terrain_level(_hovered_cell)
+	elif _tool == Tool.PROP:
+		_prop_variant = (_prop_variant + 1) % PropGeo.VARIANTS
+	else:
+		_rotation = (_rotation + 1) % 4
+	_update_status()
+
+
 func _handle_pan(delta: float) -> void:
-	# Q / E orbit the camera left / right.
+	# Q / E and the shoulder buttons orbit the camera left / right.
 	var yaw_input := 0.0
 	if Input.is_physical_key_pressed(KEY_Q): yaw_input += 1.0
 	if Input.is_physical_key_pressed(KEY_E): yaw_input -= 1.0
+	if Input.is_joy_button_pressed(PAD, JOY_BUTTON_LEFT_SHOULDER): yaw_input += 1.0
+	if Input.is_joy_button_pressed(PAD, JOY_BUTTON_RIGHT_SHOULDER): yaw_input -= 1.0
 	if yaw_input != 0.0:
 		_cam_yaw += yaw_input * 1.6 * delta
+		_update_camera_transform()
+
+	# Triggers zoom: right trigger in, left trigger out.
+	var rt := Input.get_joy_axis(PAD, JOY_AXIS_TRIGGER_RIGHT)
+	var lt := Input.get_joy_axis(PAD, JOY_AXIS_TRIGGER_LEFT)
+	if rt > 0.12:
+		_cam_distance = clampf(_cam_distance * (1.0 - rt * delta * 1.8), 8.0, 700.0)
+		_update_camera_transform()
+	if lt > 0.12:
+		_cam_distance = clampf(_cam_distance * (1.0 + lt * delta * 1.8), 8.0, 700.0)
 		_update_camera_transform()
 
 	# Z / X lift the camera straight up and down — in world space, not the camera's
@@ -423,11 +527,17 @@ func _handle_pan(delta: float) -> void:
 	if Input.is_physical_key_pressed(KEY_S) or Input.is_physical_key_pressed(KEY_DOWN): move.z += 1.0
 	if Input.is_physical_key_pressed(KEY_A) or Input.is_physical_key_pressed(KEY_LEFT): move.x -= 1.0
 	if Input.is_physical_key_pressed(KEY_D) or Input.is_physical_key_pressed(KEY_RIGHT): move.x += 1.0
+	# Right stick pans too, proportionally.
+	var rs := Vector2(
+		Input.get_joy_axis(PAD, JOY_AXIS_RIGHT_X), Input.get_joy_axis(PAD, JOY_AXIS_RIGHT_Y))
+	if rs.length() > 0.2:
+		move += Vector3(rs.x, 0.0, rs.y)
 	if move == Vector3.ZERO:
 		return
-	# Move in the camera's horizontal facing frame.
+	# Move in the camera's horizontal facing frame. limit_length (not normalize) so
+	# the analog stick gives proportional speed while keys give full speed.
 	var yaw := Basis(Vector3.UP, _cam_yaw)
-	_pivot_pos += yaw * move.normalized() * _cam_distance * delta
+	_pivot_pos += yaw * move.limit_length(1.0) * _cam_distance * delta
 	_update_camera_transform()
 
 
@@ -596,11 +706,13 @@ func _update_sculpt_ghost() -> void:
 # --- Input ------------------------------------------------------------------
 
 func _unhandled_input(event: InputEvent) -> void:
-	if event is InputEventMouseMotion and (event.button_mask & MOUSE_BUTTON_MASK_MIDDLE) != 0:
-		_cam_yaw -= event.relative.x * 0.005
-		_cam_pitch = clampf(_cam_pitch - event.relative.y * 0.005, -1.45, -0.1)
-		_update_camera_transform()
-		return
+	if event is InputEventMouseMotion:
+		_pad_cursor = false  # a mouse move takes the cursor back from the controller
+		if (event.button_mask & MOUSE_BUTTON_MASK_MIDDLE) != 0:
+			_cam_yaw -= event.relative.x * 0.005
+			_cam_pitch = clampf(_cam_pitch - event.relative.y * 0.005, -1.45, -0.1)
+			_update_camera_transform()
+			return
 
 	if event is InputEventMouseButton and event.pressed:
 		if event.button_index == MOUSE_BUTTON_WHEEL_UP:
@@ -610,15 +722,7 @@ func _unhandled_input(event: InputEvent) -> void:
 			_cam_distance = clampf(_cam_distance * 1.1, 8.0, 700.0)
 			_update_camera_transform()
 		elif event.button_index == MOUSE_BUTTON_RIGHT:
-			# Right-click changes the selected shape without drawing it.
-			if _tool == Tool.LEVEL:
-				# Eyedropper: grab the height of the square under the cursor.
-				_level_target = _terrain_level(_hovered_cell)
-			elif _tool == Tool.PROP:
-				_prop_variant = (_prop_variant + 1) % PropGeo.VARIANTS
-			elif _tool == Tool.TILE:
-				_rotation = (_rotation + 1) % 4
-			_update_status()
+			_cycle_shape()
 
 	if event.is_action_pressed("place"):
 		if _tool == Tool.TILE:
@@ -644,8 +748,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		else:
 			_delete_tile()
 	elif event.is_action_pressed("rotate"):
-		_rotation = (_rotation + 1) % 4
-		_update_status()
+		_cycle_shape()
 	elif event.is_action_pressed("raise"):
 		# PgUp/PgDn drive whichever height the active tool cares about.
 		if _tool == Tool.LEVEL:

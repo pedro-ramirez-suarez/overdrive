@@ -32,6 +32,7 @@ func _resolution_row() -> HBoxContainer:
 	drop.item_selected.connect(func(i: int) -> void: DisplayManager.set_resolution(i))
 	row.add_child(drop)
 	_res_drop = drop
+	drop.call_deferred("grab_focus")  # controller: a starting point for navigation
 	return row
 
 

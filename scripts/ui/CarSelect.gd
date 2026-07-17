@@ -54,6 +54,9 @@ func _ready() -> void:
 	root.add_child(nav)
 
 	_select(_index)
+	# Focus the current car so the D-pad / stick navigates the list from the start.
+	if _index >= 0 and _index < _buttons.size():
+		_buttons[_index].call_deferred("grab_focus")
 
 
 func _build_left() -> Control:

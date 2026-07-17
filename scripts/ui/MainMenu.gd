@@ -30,10 +30,13 @@ func _ready() -> void:
 	col.add_child(MenuUI.label("A modular-track arcade stunt racer", 16, MenuUI.MUTED))
 	col.add_child(_spacer())
 
-	col.add_child(MenuUI.button("Play", func() -> void: get_tree().change_scene_to_file(CAR_SELECT), "play", true))
+	var play := MenuUI.button("Play", func() -> void: get_tree().change_scene_to_file(CAR_SELECT), "play", true)
+	col.add_child(play)
 	col.add_child(MenuUI.button("Track Editor", _edit_new, "edit"))
 	col.add_child(MenuUI.button("Settings", func() -> void: get_tree().change_scene_to_file(SETTINGS), "gear"))
 	col.add_child(MenuUI.button("Exit", func() -> void: get_tree().quit(), "exit"))
+	# Focus the primary action so the D-pad / stick has somewhere to start.
+	play.call_deferred("grab_focus")
 
 
 func _spacer() -> Control:

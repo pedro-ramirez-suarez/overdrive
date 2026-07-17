@@ -216,6 +216,7 @@ func _refresh_list(select_path: String = "") -> void:
 				want = i
 	_list.select(want)
 	_on_selected(want)
+	_list.call_deferred("grab_focus")  # controller: D-pad scrolls the track list
 
 
 func _on_selected(index: int) -> void:

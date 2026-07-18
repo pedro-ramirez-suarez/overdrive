@@ -419,15 +419,17 @@ func _build_hud() -> void:
 	var layer := CanvasLayer.new()
 	add_child(layer)
 
-	# A styled overlay rather than Godot's default dialog, so it matches the menus.
-	# The race keeps running behind it, paused; it processes while paused (see
-	# MenuUI.confirm_overlay) and unpauses on either choice.
-	_quit_dialog = MenuUI.confirm_overlay("Leave the race?", "Leave",
-		func() -> void:
+	# A styled pause menu, so it matches the rest of the UI and a controller can
+	# drive it. The race keeps running behind it, paused; it processes while paused
+	# and unpauses when it closes.
+	var back_label: String = "Back to Editor" if GameState.return_scene.ends_with("Editor.tscn") else "Leave Race"
+	_quit_dialog = MenuUI.menu_overlay("Paused", [
+		{"text": "Resume", "cb": _close_pause, "primary": true},
+		{"text": back_label, "cb": func() -> void:
 			get_tree().paused = false
-			get_tree().change_scene_to_file(GameState.return_scene),
-		func() -> void:
-			get_tree().paused = false)
+			get_tree().change_scene_to_file(GameState.return_scene), "icon": "back"},
+		{"text": "Exit Game", "cb": func() -> void: get_tree().quit(), "icon": "exit"},
+	])
 	layer.add_child(_quit_dialog)
 
 	# Track map in the bottom-right corner.
@@ -522,6 +524,11 @@ func _show_results() -> void:
 
 # --- Helpers & input --------------------------------------------------------
 
+func _close_pause() -> void:
+	_quit_dialog.hide()
+	get_tree().paused = false
+
+
 func _racer_for_body(body: Node) -> Racer:
 	for r in _racers:
 		if r.car == body:
@@ -546,11 +553,10 @@ func _exit_tree() -> void:
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event.is_action_pressed("ui_cancel"):
-		# Toggle the styled confirm overlay. Confirming returns to wherever the race
-		# was launched from — the track selector or the editor.
+		# Toggle the pause menu (Resume / leave / exit game). Openable and operable
+		# with a controller now that ui_cancel carries a joypad button.
 		if _quit_dialog.visible:
-			_quit_dialog.hide()
-			get_tree().paused = false
+			_close_pause()
 		else:
 			get_tree().paused = true
 			_quit_dialog.show()

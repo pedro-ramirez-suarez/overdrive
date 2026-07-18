@@ -188,6 +188,63 @@ static func confirm_overlay(message: String, ok_text: String, on_ok: Callable, o
 	return root
 
 
+## A modal menu overlay: a title over a vertical stack of buttons, built from the
+## shared theme. `options` is an Array of dictionaries { text, cb, icon?, primary? }.
+## Returned hidden — call `.show()`. It grabs focus on the first button whenever it
+## becomes visible, so a controller can drive it. Processes while the game is
+## paused behind it.
+static func menu_overlay(title_text: String, options: Array) -> Control:
+	var root := Control.new()
+	root.set_anchors_preset(Control.PRESET_FULL_RECT)
+	root.theme = build_theme()
+	root.process_mode = Node.PROCESS_MODE_ALWAYS
+	root.mouse_filter = Control.MOUSE_FILTER_STOP
+	root.hide()
+
+	var scrim := ColorRect.new()
+	scrim.color = Color(0.03, 0.04, 0.06, 0.72)
+	scrim.set_anchors_preset(Control.PRESET_FULL_RECT)
+	root.add_child(scrim)
+
+	var center := CenterContainer.new()
+	center.set_anchors_preset(Control.PRESET_FULL_RECT)
+	root.add_child(center)
+
+	var panel := PanelContainer.new()
+	panel.custom_minimum_size = Vector2(340, 0)
+	center.add_child(panel)
+
+	var pad := MarginContainer.new()
+	for side in ["left", "right", "top", "bottom"]:
+		pad.add_theme_constant_override("margin_" + side, 26)
+	panel.add_child(pad)
+
+	var col := VBoxContainer.new()
+	col.add_theme_constant_override("separation", 12)
+	pad.add_child(col)
+
+	if title_text != "":
+		var t := label(title_text, 26, ACCENT)
+		t.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		col.add_child(t)
+		col.add_child(_spacer(8))
+
+	var first: Button = null
+	for opt in options:
+		var b := button(opt.text, opt.cb, opt.get("icon", ""), opt.get("primary", false))
+		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		col.add_child(b)
+		if first == null:
+			first = b
+
+	# Focus the first option each time it opens, so the D-pad has somewhere to go.
+	if first != null:
+		root.visibility_changed.connect(func() -> void:
+			if root.visible:
+				first.call_deferred("grab_focus"))
+	return root
+
+
 static func label(text: String, size: int = 18, color: Color = TEXT) -> Label:
 	var l := Label.new()
 	l.text = text

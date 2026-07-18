@@ -69,6 +69,7 @@ var _name_edit: LineEdit
 ## whether Import is offered.
 var _loaded_path: String = ""
 var _import_btn: Button
+var _ui_layer: CanvasLayer
 var _palette_buttons: Array[Button] = []
 var _tool_buttons: Dictionary = {}     # Tool -> Button
 var _terrain_buttons: Dictionary = {}  # Terrain.Type -> Button
@@ -223,6 +224,7 @@ func _build_grid_lines() -> void:
 
 func _build_ui() -> void:
 	var layer := CanvasLayer.new()
+	_ui_layer = layer
 	add_child(layer)
 
 	# Palette panel (top-left).
@@ -991,8 +993,32 @@ func _save_track() -> void:
 	var track_name: String = _name_edit.text.strip_edges()
 	if track_name == "":
 		track_name = "Untitled"
-	GameState.current_track_name = track_name
 	var path := TrackSerializer.default_save_path(track_name)
+
+	# Confirm before clobbering a DIFFERENT existing track. Re-saving the track you
+	# loaded is a plain save (same path) and never asks.
+	if FileAccess.file_exists(path) and path != _loaded_path:
+		# `hold` is captured by reference so the callbacks can free the overlay — a
+		# lambda that closed over the `dlg` var directly would capture it while still
+		# null (it is assigned on the same statement).
+		var hold: Array[Control] = [null]
+		var dlg := MenuUI.confirm_overlay(
+			"A track named '%s' already exists.\nOverwrite it?" % track_name, "Overwrite",
+			func() -> void:
+				hold[0].queue_free()
+				_do_save(track_name, path),
+			func() -> void:
+				hold[0].queue_free())
+		hold[0] = dlg
+		_ui_layer.add_child(dlg)
+		dlg.show()
+		return
+
+	_do_save(track_name, path)
+
+
+func _do_save(track_name: String, path: String) -> void:
+	GameState.current_track_name = track_name
 	if TrackSerializer.save(_grid, _library, path, track_name, "player"):
 		_loaded_path = path
 		_refresh_import_button()

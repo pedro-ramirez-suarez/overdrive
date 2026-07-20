@@ -52,6 +52,22 @@ static func compute(grid: TrackGrid, lib: TileLibrary) -> Array[Vector2i]:
 	return open
 
 
+## World-space length of the closed route through `grid`, in meters — the sum of
+## the segments joining consecutive waypoints, plus the segment closing the loop.
+## Zero if there is no drivable circuit. Used to scale medal/par times to the track.
+static func route_length(grid: TrackGrid, lib: TileLibrary) -> float:
+	var cells := compute(grid, lib)
+	if cells.size() < 2:
+		return 0.0
+	var pts: PackedVector3Array = PackedVector3Array()
+	for cell in cells:
+		pts.append(TileLibrary.cell_to_world(cell, grid.tiles[cell].elevation_level))
+	var total := 0.0
+	for i in range(pts.size()):
+		total += pts[i].distance_to(pts[(i + 1) % pts.size()])
+	return total
+
+
 static func _walk(state: Dictionary, current: Vector2i, path: Array[Vector2i], visited: Dictionary) -> void:
 	state["budget"] -= 1
 	if state["budget"] <= 0 or path.size() >= MAX_PATH:

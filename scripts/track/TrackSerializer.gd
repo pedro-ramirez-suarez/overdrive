@@ -56,13 +56,21 @@ static func save(grid: TrackGrid, lib: TileLibrary, path: String, track_name: St
 	return true
 
 
-## Returns { grid: TrackGrid, name: String, author: String } or {} on failure.
+## Returns { grid: TrackGrid, name: String, author: String, terrain: Terrain } or
+## {} on failure.
 static func load_track(path: String, lib: TileLibrary) -> Dictionary:
 	if not FileAccess.file_exists(path):
 		return {}
 	var data: Variant = JSON.parse_string(FileAccess.get_file_as_string(path))
 	if typeof(data) != TYPE_DICTIONARY:
 		return {}
+	return from_dict(data, lib)
+
+
+## Rebuild a track from an already-parsed dict (the shape `to_dict` produces). Split
+## out from load_track so the editor can snapshot/restore state in memory for undo
+## without going through a file.
+static func from_dict(data: Dictionary, lib: TileLibrary) -> Dictionary:
 	var grid := TrackGrid.new(lib.definitions)
 	for c in data.get("grid", []):
 		grid.place(

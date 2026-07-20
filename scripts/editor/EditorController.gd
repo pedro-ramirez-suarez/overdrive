@@ -80,6 +80,14 @@ var _placed_nodes: Dictionary = {}
 # Placed prop instances by cell.
 var _prop_nodes: Dictionary = {}
 
+# Undo/redo: whole-track snapshots (the dict `TrackSerializer.to_dict` produces).
+# Snapshotting the entire track per edit is cheap here and sidesteps having to
+# invert every kind of edit — a restore just reloads and rebuilds. One snapshot is
+# taken per action (or per drag stroke) BEFORE it mutates anything.
+const UNDO_LIMIT := 60
+var _undo_stack: Array = []
+var _redo_stack: Array = []
+
 
 func _ready() -> void:
 	_library = GameState.library
@@ -121,6 +129,7 @@ func _effective_elevation(cell: Vector2i) -> int:
 func _select_terrain(type_index: int, force: bool = false) -> void:
 	if not force and type_index == _terrain_type and GameState.current_terrain != null:
 		return
+	_push_undo()
 	_terrain_type = type_index
 	var terrain := Terrain.new()
 	terrain.setup(type_index, randi())
@@ -365,7 +374,7 @@ func _build_ui() -> void:
 
 	# Help (bottom-right).
 	var help := Label.new()
-	help.text = "Mouse/keys — Orbit: middle-drag or Q/E   Pan: WASD   Up/Down: Z/X   Zoom: wheel   Place: click   Delete: Del   Rotate: T\nController — Move: L-stick   Pan: R-stick   Orbit: LB/RB   Zoom: triggers   Place: A   Delete: X   Rotate: B   Piece: D-pad ◄►   Tool: Y   Elevation: D-pad ▲▼"
+	help.text = "Mouse/keys — Orbit: middle-drag or Q/E   Pan: WASD   Up/Down: Z/X   Zoom: wheel   Place: click   Delete: Del   Rotate: T   Undo: Ctrl+Z   Redo: Ctrl+Y\nController — Move: L-stick   Pan: R-stick   Orbit: LB/RB   Zoom: triggers   Place: A   Delete: X   Rotate: B   Piece: D-pad ◄►   Tool: Y   Elevation: D-pad ▲▼"
 	help.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	help.anchor_left = 1.0
 	help.anchor_right = 1.0
@@ -705,9 +714,62 @@ func _update_sculpt_ghost() -> void:
 	_update_status()
 
 
+# --- Undo / redo ------------------------------------------------------------
+
+## Capture the current track and push it as an undo point. Call BEFORE mutating.
+## Clears the redo stack, since a fresh edit forks history.
+func _push_undo() -> void:
+	_undo_stack.append(TrackSerializer.to_dict(_grid, _library, GameState.current_track_name, "player"))
+	if _undo_stack.size() > UNDO_LIMIT:
+		_undo_stack.pop_front()
+	_redo_stack.clear()
+
+
+func _undo() -> void:
+	if _undo_stack.is_empty():
+		_flash("Nothing to undo.")
+		return
+	_redo_stack.append(TrackSerializer.to_dict(_grid, _library, GameState.current_track_name, "player"))
+	_restore(_undo_stack.pop_back())
+	_flash("Undo")
+
+
+func _redo() -> void:
+	if _redo_stack.is_empty():
+		_flash("Nothing to redo.")
+		return
+	_undo_stack.append(TrackSerializer.to_dict(_grid, _library, GameState.current_track_name, "player"))
+	_restore(_redo_stack.pop_back())
+	_flash("Redo")
+
+
+## Replace the live track with a snapshot and rebuild the world from it.
+func _restore(snapshot: Dictionary) -> void:
+	var result := TrackSerializer.from_dict(snapshot, _library)
+	_grid = result.grid
+	GameState.current_grid = _grid
+	GameState.current_terrain = result.get("terrain", null)
+	_terrain_type = GameState.current_terrain.type if GameState.current_terrain != null else Terrain.Type.FLAT
+	_rebuild_terrain()
+	_rebuild_all_tiles()
+	_rebuild_all_props()
+	_refresh_palette_highlight()
+	_update_status()
+
+
 # --- Input ------------------------------------------------------------------
 
 func _unhandled_input(event: InputEvent) -> void:
+	# Ctrl+Z / Ctrl+Shift+Z / Ctrl+Y before anything else. GUI-focused events (e.g.
+	# typing in the name field) never reach _unhandled_input, so this is safe.
+	if event is InputEventKey and event.pressed and not event.echo and event.ctrl_pressed:
+		if event.keycode == KEY_Z:
+			_redo() if event.shift_pressed else _undo()
+			return
+		if event.keycode == KEY_Y:
+			_redo()
+			return
+
 	if event is InputEventMouseMotion:
 		_pad_cursor = false  # a mouse move takes the cursor back from the controller
 		if (event.button_mask & MOUSE_BUTTON_MASK_MIDDLE) != 0:
@@ -732,7 +794,9 @@ func _unhandled_input(event: InputEvent) -> void:
 		elif _tool == Tool.PROP:
 			_place_prop()
 		else:
-			# Start a stroke; _process paints the rest as the cursor moves.
+			# Start a stroke; _process paints the rest as the cursor moves. One undo
+			# snapshot per stroke, taken here before the first cell is painted.
+			_push_undo()
 			_dragging = true
 			_drag_cells.clear()
 			_apply_tool_at(_hovered_cell)
@@ -744,6 +808,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		elif _tool == Tool.LAKE:
 			var terrain: Terrain = GameState.current_terrain
 			if terrain != null and terrain.has_lake(_hovered_cell):
+				_push_undo()
 				terrain.remove_lake(_hovered_cell)
 				_mark_terrain_dirty(0.05)
 				_update_status()
@@ -772,6 +837,7 @@ func _place_tile() -> void:
 	var def := _current_def()
 	if def == null:
 		return
+	_push_undo()
 	# Clicking a cell that already holds this tile cycles its rotation (Stunts-
 	# style): repeated clicks rotate a curve through all four orientations.
 	var existing: PlacedTile = _grid.get_placed(_hovered_cell)
@@ -819,6 +885,7 @@ func _place_prop() -> void:
 	if blocker != "":
 		_flash("Can't build there: %s." % blocker)
 		return
+	_push_undo()
 	# Free any prop nodes this plot will overwrite.
 	for c in TrackGrid.prop_cells(_hovered_cell, _prop_kind, _rotation):
 		var a := _grid.prop_anchor(c)
@@ -834,6 +901,7 @@ func _delete_prop() -> void:
 	var anchor := _grid.prop_anchor(_hovered_cell)
 	if anchor == TrackGrid.NONE:
 		return
+	_push_undo()
 	_grid.remove_prop(_hovered_cell)
 	if _prop_nodes.has(anchor):
 		(_prop_nodes[anchor] as Node).queue_free()
@@ -871,7 +939,10 @@ func _reseat_props() -> void:
 
 func _delete_tile() -> void:
 	var anchor := _grid.get_anchor(_hovered_cell)
-	if anchor != TrackGrid.NONE and _placed_nodes.has(anchor):
+	if anchor == TrackGrid.NONE:
+		return
+	_push_undo()
+	if _placed_nodes.has(anchor):
 		(_placed_nodes[anchor] as Node).queue_free()
 		_placed_nodes.erase(anchor)
 	_grid.remove(_hovered_cell)

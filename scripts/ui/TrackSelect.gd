@@ -244,6 +244,16 @@ func _on_selected(index: int) -> void:
 	_info.text = "%s — %d tiles, %d scenery, %s%s" % [
 		result.name, result.grid.tiles.size(), props, terrain_name,
 		"    (built-in sample)" if entry.get("builtin", false) else ""]
+
+	# Best lap and its medal for this track, if it has ever been raced. The medal is
+	# judged on the best lap against a one-lap par, exactly as the results screen does.
+	var rec: Dictionary = Records.load_record(result.name)
+	var best_lap: float = rec.get("best_lap", -1.0)
+	if best_lap > 0.0:
+		var route_len: float = RacePath.route_length(result.grid, GameState.library)
+		var medal: int = Records.medal(best_lap, route_len) if route_len > 0.0 else Records.Medal.NONE
+		var glyph: String = Records.MEDAL_GLYPHS[medal]
+		_info.text += "\nBest lap  %s   %s" % [LapTimer.format(best_lap), glyph]
 	# Bundled tracks ship with the game; deleting one is not recoverable.
 	_delete_btn.disabled = not TrackSerializer.is_in_library(entry.path)
 

@@ -44,6 +44,9 @@ const MODE_NAMES: Array[String] = ["Chase", "Close", "Cockpit", "Bumper"]
 ## Wider in first person: the view sits still relative to the car, so a normal FOV
 ## reads as much slower than it is.
 @export var first_person_fov: float = 88.0
+## Extra degrees of FOV added at top speed, eased in with pace so acceleration
+## reads as a subtle widening of the view — the classic arcade "sense of speed".
+@export var fov_kick: float = 10.0
 ## First-person follow. Very high — the view must track the car almost exactly —
 ## but not infinite, so single-frame suspension jitter is damped.
 @export var first_person_lag: float = 30.0
@@ -101,6 +104,20 @@ func _follow(delta: float) -> void:
 		_follow_chase(delta)
 	else:
 		_follow_first_person(delta)
+	_apply_speed_fov(delta)
+
+
+## Widen the FOV with speed. Eased toward a target each frame (not snapped) so the
+## kick swells and settles smoothly; the base FOV is whichever the current mode
+## uses, so this layers on top of the chase/first-person split in set_mode.
+func _apply_speed_fov(delta: float) -> void:
+	if fov_kick <= 0.0 or not (target is ArcadeCar):
+		return
+	var car := target as ArcadeCar
+	var top: float = car.profile.max_speed if car.profile != null else 60.0
+	var pace: float = clampf(car.linear_velocity.length() / maxf(top, 1.0), 0.0, 1.0)
+	var base: float = _chase_fov if _is_chase(mode) else first_person_fov
+	fov = lerpf(fov, base + fov_kick * pace, clampf(6.0 * delta, 0.0, 1.0))
 
 
 ## Ride the car's full transform, offset to the driver's eye or the bumper.

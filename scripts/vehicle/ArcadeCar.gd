@@ -186,12 +186,20 @@ func _on_body_entered(body: Node) -> void:
 		return
 	var relative_speed: float = (linear_velocity - (body as ArcadeCar).linear_velocity).length()
 	if relative_speed > 6.0:
-		AudioManager.play_impact(clampf(relative_speed / 25.0, 0.2, 1.0))
+		var force: float = clampf(relative_speed / 25.0, 0.2, 1.0)
+		AudioManager.play_impact(force)
+		# A sharp jolt in the player's hands on a real bump; a no-op without a pad.
+		if player_controlled:
+			Haptics.pulse(0.4 * force, force, 0.18)
 
 
 func _physics_process(delta: float) -> void:
 	if profile == null:
 		return
+
+	# Captured before any force is applied this step, so a landing reads the true
+	# incoming vertical speed rather than the value after the suspension pushes back.
+	var incoming_vy: float = linear_velocity.y
 
 	if player_controlled:
 		if control_enabled:
@@ -211,8 +219,46 @@ func _physics_process(delta: float) -> void:
 	_apply_surface_alignment(delta)
 	_update_safe_state()
 	_update_brake_lights()
+	if player_controlled:
+		_update_rumble(delta, incoming_vy)
 	if player_controlled and self_reset_enabled:
 		_handle_reset()
+
+
+# --- Controller rumble ------------------------------------------------------
+# Player car only. Every call routes through Haptics, which no-ops without a pad.
+
+var _was_grounded: bool = true
+var _air_accum: float = 0.0
+var _road_rumble_cd: float = 0.0
+var _road_rumbling: bool = false
+
+
+func _update_rumble(delta: float, incoming_vy: float) -> void:
+	# A thump on landing, scaled by how hard the car came down and only after real
+	# airtime (so rolling over crests and kerbs doesn't buzz constantly).
+	if not grounded:
+		_air_accum += delta
+	elif not _was_grounded:
+		if _air_accum > 0.25:
+			var impact: float = clampf(-incoming_vy / 22.0, 0.0, 1.0)  # down is -Y
+			if impact > 0.12:
+				Haptics.pulse(0.25 + impact * 0.4, impact, 0.22)
+		_air_accum = 0.0
+	_was_grounded = grounded
+
+	# A low, steady buzz while scrabbling over off-road ground at speed, refreshed
+	# on a timer so it stays alive, and cut the moment the car is back on tarmac.
+	var off_road: bool = grounded and not on_track and linear_velocity.length() > 5.0
+	if off_road:
+		_road_rumble_cd -= delta
+		if _road_rumble_cd <= 0.0:
+			Haptics.pulse(0.32, 0.0, 0.3)
+			_road_rumble_cd = 0.25
+		_road_rumbling = true
+	elif _road_rumbling:
+		Haptics.stop()
+		_road_rumbling = false
 
 
 func _read_player_input() -> void:

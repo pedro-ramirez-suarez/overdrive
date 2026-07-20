@@ -58,6 +58,19 @@ func sample(index: int, t: float) -> Transform3D:
 	return Transform3D(Basis(q), p)
 
 
+## A new one-car Replay holding just `index`'s stream — the basis of the "beat
+## your best" ghost, which only ever needs the player's own car.
+func extract_car(index: int) -> Replay:
+	var r := Replay.new()
+	r.fps = fps
+	if index < 0 or index >= car_infos.size():
+		return r
+	r.car_infos = [car_infos[index]]
+	r.positions = [positions[index]]
+	r.rotations = [rotations[index]]
+	return r
+
+
 # --- Persistence ------------------------------------------------------------
 
 func save_to(path: String) -> bool:

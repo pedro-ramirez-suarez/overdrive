@@ -34,12 +34,46 @@ var _player: Racer
 var _player_position: int = 1
 var _recorder: ReplayRecorder = ReplayRecorder.new()
 
+## Cumulative route length up to each waypoint, and the total, in meters — used to
+## turn positions into an along-route distance for live time gaps and medals.
+var _wp_cum: PackedFloat32Array = PackedFloat32Array()
+var _route_len: float = 0.0
+
+## "Beat your best" ghost: a translucent, transform-driven car replaying the best
+## recorded run of this track, and the replay that drives it.
+var _ghost_car: ArcadeCar
+var _ghost_replay: Replay
+
 # HUD
 var _countdown_label: Label
 var _info_label: Label
 var _results_label: Label
+var _results_panel: Control
+var _wrongway_label: Label
+var _speed_lines: ColorRect
 var _quit_dialog: Control
 var _minimap: MiniMap
+
+## Radial "wind streak" overlay shader — faint white streaks that stream outward
+## from the centre, their strength driven by speed, so flat-out driving feels fast.
+## Center is kept clear so it never obscures the road ahead.
+const SPEED_LINES_SHADER := """
+shader_type canvas_item;
+uniform float intensity : hint_range(0.0, 1.0) = 0.0;
+float hash(float x) { return fract(sin(x * 12.9898) * 43758.5453); }
+void fragment() {
+	vec2 uv = UV - vec2(0.5);
+	uv.x *= 1.7; // widen so streaks fan across the screen, not a circle
+	float r = length(uv);
+	float ang = atan(uv.y, uv.x);
+	float slice = floor(ang * 34.0);
+	float pick = step(0.72, hash(slice));            // only some angular slices streak
+	float flow = fract(r * 2.2 - TIME * 2.6 + hash(slice) * 6.0);
+	float streak = smoothstep(0.55, 1.0, flow) * pick;
+	float mask = smoothstep(0.18, 0.7, r);            // clear the middle of the view
+	COLOR = vec4(vec3(1.0), streak * mask * intensity * 0.35);
+}
+"""
 
 
 func _ready() -> void:
@@ -53,20 +87,37 @@ func _ready() -> void:
 	_path = RacePath.compute(grid, lib)
 	if _path.size() < 2:
 		_add_camera(Vector3(0, 20, 30))
-		_results_label.text = "This track has no drivable loop yet.\nBuild a connected circuit with a Start tile.\n\nEsc: go back"
-		_results_label.visible = true
+		_show_results_text("This track has no drivable loop yet.\nBuild a connected circuit with a Start tile.\n\nEsc: go back")
 		_minimap.visible = false  # nothing to map
 		_phase = Phase.FINISHED
 		return
 
 	_build_waypoints(grid)
+	_build_route_metrics()
 	_build_track_points(grid)
 	_create_checkpoints()
 	_spawn_racers(grid, lib)
+	_spawn_ghost()
+	_add_skidmarks()
 	if _minimap != null:
 		_minimap.setup(_track_points, _racers)
 	_add_camera(Vector3(0, 4, 12))
 	_set_active(false)
+
+
+## Cumulative along-route distance at each waypoint (and the loop total), so a
+## world position can be turned into "how far round the lap" for time gaps.
+func _build_route_metrics() -> void:
+	_wp_cum = PackedFloat32Array()
+	_route_len = 0.0
+	if _waypoints.size() < 2:
+		return
+	_wp_cum.resize(_waypoints.size())
+	var acc := 0.0
+	for i in range(_waypoints.size()):
+		_wp_cum[i] = acc
+		acc += _waypoints[i].distance_to(_waypoints[(i + 1) % _waypoints.size()])
+	_route_len = acc
 
 
 # --- Setup ------------------------------------------------------------------
@@ -154,6 +205,72 @@ func _add_camera(pos: Vector3) -> void:
 	add_child(cam)
 
 
+## Lay down the skid-mark surface and hand it the player's car. Off the player, so
+## AI cars don't also scribble on the road.
+func _add_skidmarks() -> void:
+	if _player == null:
+		return
+	var marks := SkidMarks.new()
+	marks.car = _player.car
+	add_child(marks)
+
+
+# --- Ghost ("beat your best") -----------------------------------------------
+
+## Spawn the translucent ghost from this track's best-run replay, if one exists. It
+## is a purely visual, transform-driven prop with no collision, so it never touches
+## the player or the checkpoints. Hidden until the race starts.
+func _spawn_ghost() -> void:
+	_ghost_replay = Records.load_ghost(GameState.current_track_name)
+	if _ghost_replay == null or _ghost_replay.frame_count() < 2:
+		_ghost_replay = null
+		return
+	var info: Dictionary = _ghost_replay.car_infos[0]
+	_ghost_car = load(CAR_SCENE).instantiate()
+	var model_path: String = info.get("model_path", "")
+	if model_path != "":
+		var prof := CarProfile.new()
+		prof.model_scene = load(model_path)
+		prof.model_scale = info.get("model_scale", 1.0)
+		prof.model_y_offset = info.get("model_y_offset", 0.0)
+		prof.model_yaw = info.get("model_yaw", 0.0)
+		_ghost_car.profile = prof
+	add_child(_ghost_car)
+	# Turn it into a visual-only prop: no physics, no collision, faded and tinted so
+	# it reads plainly as a ghost of a past run rather than a live rival.
+	_ghost_car.set_physics_process(false)
+	_ghost_car.freeze = true
+	_ghost_car.freeze_mode = RigidBody3D.FREEZE_MODE_KINEMATIC
+	_ghost_car.collision_layer = 0
+	_ghost_car.collision_mask = 0
+	if model_path == "":
+		_ghost_car.get_node("Visual").set("body_color", Color(0.55, 0.85, 1.0))
+	_make_ghostly(_ghost_car)
+	_ghost_car.global_transform = _ghost_replay.sample(0, 0.0)
+	_ghost_car.visible = false
+
+
+## Fade every mesh under `node` so the ghost car is see-through.
+func _make_ghostly(node: Node) -> void:
+	if node is GeometryInstance3D:
+		(node as GeometryInstance3D).transparency = 0.6
+	for c in node.get_children():
+		_make_ghostly(c)
+
+
+## Drive the ghost to where the best run was at this race time. Once the best run
+## has ended (you have outlasted it) the ghost simply disappears.
+func _update_ghost() -> void:
+	if _ghost_car == null:
+		return
+	var frame: float = _race_time * _ghost_replay.fps
+	if frame <= float(_ghost_replay.frame_count() - 1):
+		_ghost_car.visible = true
+		_ghost_car.global_transform = _ghost_replay.sample(0, frame)
+	else:
+		_ghost_car.visible = false
+
+
 # --- Phases -----------------------------------------------------------------
 
 func _process(delta: float) -> void:
@@ -169,7 +286,9 @@ func _process(delta: float) -> void:
 			_update_rubberband()
 			_check_respawns(delta)
 			_update_ranks()
+			_update_ghost()
 			_update_hud()
+			_update_wrong_way()
 		Phase.FINISHED:
 			pass
 
@@ -247,8 +366,16 @@ func _finish_race() -> void:
 	for ai in _ai:
 		ai.active = false
 	AudioManager.set_warning(false)
+	Haptics.stop()
 	GameState.last_replay = _recorder.replay
-	_show_results()
+	# Fold the run into this track's records; a beaten race time also saves the run
+	# as the new ghost. Player is car 0 in the recording.
+	var beat := {"lap": false, "race": false}
+	if _player != null and _recorder.replay != null:
+		var ghost: Replay = _recorder.replay.extract_car(0)
+		beat = Records.submit(
+			GameState.current_track_name, _player.timer.best_lap, _player.finish_time, ghost)
+	_show_results(beat)
 
 
 # --- Respawns ---------------------------------------------------------------
@@ -413,11 +540,82 @@ func _progress(r: Racer) -> float:
 	return float(r.lap) + float(r.cp_this_lap) / float(n)
 
 
+## Total distance travelled along the route, in meters (laps included). Used to
+## measure the live time gap between the player and the car it is chasing.
+func _metric_progress(r: Racer) -> float:
+	if _wp_cum.is_empty():
+		return 0.0
+	var i: int = _nearest_waypoint_index(r.car.global_position)
+	return float(r.lap) * _route_len + _wp_cum[i]
+
+
+## The time gap from the player to the racer one place ahead, as a string like
+## "+1.2s", or "" when the player leads. Distance to the car ahead converted to
+## seconds at the player's current speed — an approximation, but a stable, readable
+## one that matches what the driver feels.
+func _interval_to_ahead() -> String:
+	if _player == null or _player_position <= 1:
+		return ""
+	var order := _racers.duplicate()
+	order.sort_custom(func(a: Racer, b: Racer) -> bool: return _progress(a) > _progress(b))
+	var idx: int = order.find(_player)
+	if idx <= 0:
+		return ""
+	var ahead: Racer = order[idx - 1]
+	var gap_m: float = _metric_progress(ahead) - _metric_progress(_player)
+	if gap_m <= 0.0:
+		return ""
+	var speed: float = maxf(_player.car.linear_velocity.length(), 8.0)
+	return "+%.1fs" % (gap_m / speed)
+
+
+# --- Wrong way --------------------------------------------------------------
+
+## Flash a warning when the player is driving against the route. Compares the car's
+## travel direction with the route's forward direction at the nearest waypoint; a
+## strongly-opposed heading at speed lights the warning.
+func _update_wrong_way() -> void:
+	if _wrongway_label == null:
+		return
+	var wrong := false
+	if _player != null and not _player.finished and _waypoints.size() >= 2:
+		var vel: Vector3 = _player.car.linear_velocity
+		vel.y = 0.0
+		if vel.length() > 4.0:
+			var idx: int = _nearest_waypoint_index(_player.car.global_position)
+			var route_dir: Vector3 = _forward_at(idx)
+			wrong = vel.normalized().dot(route_dir) < -0.45
+	# Blink so it reads as an alert rather than static UI.
+	_wrongway_label.visible = wrong and (int(_race_time * 3.0) % 2 == 0)
+
+
+# --- Restart ----------------------------------------------------------------
+
+## Restart the race from the grid. Rebuilds the scene from the same GameState, so
+## the same track, car and field come back on the start line.
+func _restart_race() -> void:
+	get_tree().paused = false
+	AudioManager.set_warning(false)
+	get_tree().reload_current_scene()
+
+
 # --- HUD --------------------------------------------------------------------
 
 func _build_hud() -> void:
 	var layer := CanvasLayer.new()
 	add_child(layer)
+
+	# Speed-line overlay first, so all the HUD text and menus draw on top of it.
+	var sh := Shader.new()
+	sh.code = SPEED_LINES_SHADER
+	var mat := ShaderMaterial.new()
+	mat.shader = sh
+	mat.set_shader_parameter("intensity", 0.0)
+	_speed_lines = ColorRect.new()
+	_speed_lines.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_speed_lines.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_speed_lines.material = mat
+	layer.add_child(_speed_lines)
 
 	# A styled pause menu, so it matches the rest of the UI and a controller can
 	# drive it. The race keeps running behind it, paused; it processes while paused
@@ -425,6 +623,7 @@ func _build_hud() -> void:
 	var back_label: String = "Back to Editor" if GameState.return_scene.ends_with("Editor.tscn") else "Leave Race"
 	_quit_dialog = MenuUI.menu_overlay("Paused", [
 		{"text": "Resume", "cb": _close_pause, "primary": true},
+		{"text": "Restart Race", "cb": _restart_race, "icon": "reroll"},
 		{"text": back_label, "cb": func() -> void:
 			get_tree().paused = false
 			get_tree().change_scene_to_file(GameState.return_scene), "icon": "back"},
@@ -466,20 +665,46 @@ func _build_hud() -> void:
 	_countdown_label.add_theme_font_size_override("font_size", 72)
 	layer.add_child(_countdown_label)
 
+	_wrongway_label = Label.new()
+	_wrongway_label.text = "◄ WRONG WAY ►"
+	_wrongway_label.anchor_left = 0.5
+	_wrongway_label.anchor_right = 0.5
+	_wrongway_label.anchor_top = 0.55
+	_wrongway_label.offset_left = -220
+	_wrongway_label.offset_right = 220
+	_wrongway_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_wrongway_label.add_theme_color_override("font_color", Color(1.0, 0.85, 0.2))
+	_wrongway_label.add_theme_color_override("font_outline_color", Color.BLACK)
+	_wrongway_label.add_theme_constant_override("outline_size", 6)
+	_wrongway_label.add_theme_font_size_override("font_size", 40)
+	_wrongway_label.visible = false
+	layer.add_child(_wrongway_label)
+
+	# Results sit inside a themed panel centred on screen, so the standings read
+	# against a solid slab like the rest of the UI rather than floating over the map.
+	_results_panel = PanelContainer.new()
+	_results_panel.theme = MenuUI.build_theme()
+	_results_panel.anchor_left = 0.5
+	_results_panel.anchor_right = 0.5
+	_results_panel.anchor_top = 0.5
+	_results_panel.anchor_bottom = 0.5
+	_results_panel.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	_results_panel.grow_vertical = Control.GROW_DIRECTION_BOTH
+	_results_panel.visible = false
+	layer.add_child(_results_panel)
+
+	var results_pad := MarginContainer.new()
+	for side in ["left", "right", "top", "bottom"]:
+		results_pad.add_theme_constant_override("margin_" + side, 30)
+	_results_panel.add_child(results_pad)
+
 	_results_label = Label.new()
-	_results_label.anchor_left = 0.5
-	_results_label.anchor_top = 0.3
-	_results_label.offset_left = -220
-	_results_label.offset_right = 220
 	_results_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_results_label.add_theme_color_override("font_outline_color", Color.BLACK)
-	_results_label.add_theme_constant_override("outline_size", 5)
-	_results_label.add_theme_font_size_override("font_size", 26)
-	_results_label.visible = false
-	layer.add_child(_results_label)
+	_results_label.add_theme_font_size_override("font_size", 24)
+	results_pad.add_child(_results_label)
 
 	var hint := Label.new()
-	hint.text = "Esc: editor    R: respawn"
+	hint.text = "Esc: pause    R: respawn    C: camera"
 	hint.anchor_top = 1.0
 	hint.anchor_bottom = 1.0
 	hint.offset_left = 14
@@ -500,26 +725,63 @@ func _update_hud() -> void:
 	if _player == null:
 		return
 	var lap_display: int = mini(_player.lap + 1, _laps_total)
-	_info_label.text = "P%d/%d    Lap %d/%d\nTime  %s\nBest  %s" % [
-		_player_position, _racers.size(), lap_display, _laps_total,
+	var interval: String = _interval_to_ahead()
+	var pos_line: String = "P%d/%d    Lap %d/%d" % [
+		_player_position, _racers.size(), lap_display, _laps_total]
+	if interval != "":
+		pos_line += "    %s" % interval  # gap to the car ahead
+	_info_label.text = "%s\nTime  %s\nBest  %s" % [
+		pos_line,
 		LapTimer.format(_player.timer.current(_race_time)),
 		LapTimer.format(_player.timer.best_lap)]
 
+	# Speed lines fade in only over the top third of the car's speed range.
+	if _speed_lines != null:
+		var top: float = _player.car.profile.max_speed if _player.car.profile != null else 60.0
+		var ratio: float = clampf(_player.car.linear_velocity.length() / maxf(top, 1.0), 0.0, 1.0)
+		var lines_i: float = clampf((ratio - 0.65) / 0.35, 0.0, 1.0)
+		(_speed_lines.material as ShaderMaterial).set_shader_parameter("intensity", lines_i)
 
-func _show_results() -> void:
+
+func _show_results(beat: Dictionary = {"lap": false, "race": false}) -> void:
 	_countdown_label.text = ""
+	if _speed_lines != null:
+		(_speed_lines.material as ShaderMaterial).set_shader_parameter("intensity", 0.0)
 	var order := _racers.duplicate()
 	order.sort_custom(func(a: Racer, b: Racer) -> bool: return _progress(a) > _progress(b))
-	var lines: Array[String] = ["FINISH"]
+	var lines: Array[String] = ["FINISH", ""]
 	for i in range(order.size()):
 		var r: Racer = order[i]
 		var time_text: String = LapTimer.format(r.finish_time) if r.finished else "DNF"
-		lines.append("%d.  %s   %s   best %s" % [
-			i + 1, r.display_name, time_text, LapTimer.format(r.timer.best_lap)])
+		var tag: String = "   ◄ You" if r == _player else ""
+		lines.append("%d.  %s   %s%s" % [i + 1, r.display_name, time_text, tag])
+
+	# The player's medal and how they measured up to par, plus any new records set.
+	# The medal is judged on the best LAP against a one-lap par, so it means the same
+	# thing however many laps the race was — and matches what track-select shows.
+	if _player != null and _player.finished and _route_len > 0.0 and _player.timer.best_lap > 0.0:
+		lines.append("")
+		var medal: int = Records.medal(_player.timer.best_lap, _route_len)
+		if medal != Records.Medal.NONE:
+			lines.append("%s  %s" % [Records.MEDAL_GLYPHS[medal], Records.MEDAL_NAMES[medal]])
+		lines.append("Lap par %s    Best lap %s" % [
+			LapTimer.format(Records.par_time(_route_len)), LapTimer.format(_player.timer.best_lap)])
+		if beat.get("race", false):
+			lines.append("★ NEW RECORD TIME ★")
+		if beat.get("lap", false):
+			lines.append("★ NEW BEST LAP ★")
+
 	lines.append("")
-	lines.append("Enter: watch replay      Esc: leave race")
-	_results_label.text = "\n".join(lines)
-	_results_label.visible = true
+	var can_replay: bool = GameState.last_replay != null
+	lines.append("Enter: watch replay      Esc: leave race" if can_replay else "Esc: leave race")
+	_show_results_text("\n".join(lines))
+
+
+## Fill the results panel with `text` and reveal it. Also used for the "no drivable
+## loop" message.
+func _show_results_text(text: String) -> void:
+	_results_label.text = text
+	_results_panel.visible = true
 
 
 # --- Helpers & input --------------------------------------------------------
@@ -562,5 +824,8 @@ func _unhandled_input(event: InputEvent) -> void:
 			_quit_dialog.show()
 	elif event.is_action_pressed("ui_accept") and _phase == Phase.FINISHED and GameState.last_replay != null:
 		get_tree().change_scene_to_file(REPLAY_SCENE)
+	elif event.is_action_pressed("ui_accept") and _phase == Phase.COUNTDOWN:
+		# Skip the wait: drop the countdown to a brief "GO!" flash.
+		_countdown = minf(_countdown, 0.4)
 	elif event.is_action_pressed("reset_car") and _phase == Phase.RACING and _player != null:
 		_manual_reset(_player)

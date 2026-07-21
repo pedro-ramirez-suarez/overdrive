@@ -39,6 +39,10 @@ var _recorder: ReplayRecorder = ReplayRecorder.new()
 var _wp_cum: PackedFloat32Array = PackedFloat32Array()
 var _route_len: float = 0.0
 
+## Waypoint indices that sit on a loop tile — handed to the AI so it drives up and
+## over instead of cutting across the base.
+var _loop_flags: Dictionary = {}
+
 ## "Beat your best" ghost: a translucent, transform-driven car replaying the best
 ## recorded run of this track, and the replay that drives it.
 var _ghost_car: ArcadeCar
@@ -94,6 +98,7 @@ func _ready() -> void:
 
 	_build_waypoints(grid)
 	_build_route_metrics()
+	_build_loop_flags(grid)
 	_build_track_points(grid)
 	_create_checkpoints()
 	_spawn_racers(grid, lib)
@@ -118,6 +123,16 @@ func _build_route_metrics() -> void:
 		_wp_cum[i] = acc
 		acc += _waypoints[i].distance_to(_waypoints[(i + 1) % _waypoints.size()])
 	_route_len = acc
+
+
+## Flag which route waypoints sit on a loop tile, so the AI can commit to driving
+## them rather than steering across the base.
+func _build_loop_flags(grid: TrackGrid) -> void:
+	_loop_flags = {}
+	for i in range(_path.size()):
+		var def: TileDefinition = grid.get_def(_path[i])
+		if def != null and def.category == TileDefinition.Category.LOOP:
+			_loop_flags[i] = true
 
 
 # --- Setup ------------------------------------------------------------------
@@ -179,6 +194,7 @@ func _spawn_racers(grid: TrackGrid, lib: TileLibrary) -> void:
 			ai.car = car
 			ai.waypoints = _waypoints
 			ai.target_index = 1 % _waypoints.size()
+			ai.loop_flags = _loop_flags
 			add_child(ai)
 			_ai.append(ai)
 

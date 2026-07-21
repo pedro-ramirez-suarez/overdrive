@@ -71,8 +71,74 @@ func _build_preview_pane() -> Control:
 	_info = MenuUI.label("Pick a track from the list.", 16, MenuUI.MUTED)
 	pane.add_child(_info)
 
-	pane.add_child(_atmosphere_bar())
+	pane.add_child(_setup_panel())
 	return pane
+
+
+## One "Race Setup" card grouping the laps/opponents steppers and the time/weather
+## pickers, so the pre-race options read as a single, hard-to-miss block rather than
+## a thin strip under the preview.
+func _setup_panel() -> Control:
+	var panel := PanelContainer.new()
+
+	var pad := MarginContainer.new()
+	for side in ["left", "right", "top", "bottom"]:
+		pad.add_theme_constant_override("margin_" + side, 14)
+	panel.add_child(pad)
+
+	var col := VBoxContainer.new()
+	col.add_theme_constant_override("separation", 12)
+	pad.add_child(col)
+
+	col.add_child(MenuUI.label("RACE SETUP", 18, MenuUI.ACCENT))
+
+	var steppers := HBoxContainer.new()
+	steppers.add_theme_constant_override("separation", 40)
+	steppers.add_child(_stepper("Laps", 1, 20, GameState.race_laps,
+		func(v: int) -> void: GameState.race_laps = v))
+	steppers.add_child(_stepper("Opponents", 0, 5, GameState.race_ai_count,
+		func(v: int) -> void: GameState.race_ai_count = v))
+	col.add_child(steppers)
+
+	col.add_child(_atmosphere_bar())
+	return panel
+
+
+## A big, obvious "− value +" stepper: a captioned value flanked by round buttons.
+## `value` is held in a one-element array so the button closures can mutate it.
+func _stepper(text: String, lo: int, hi: int, start: int, on_change: Callable) -> Control:
+	var box := VBoxContainer.new()
+	box.add_theme_constant_override("separation", 4)
+	box.add_child(MenuUI.label(text, 14, MenuUI.MUTED))
+
+	var held: Array[int] = [start]
+	var value := MenuUI.label(str(start), 28)
+	value.custom_minimum_size = Vector2(46, 0)
+	value.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 8)
+	var minus := _step_button("−")
+	var plus := _step_button("+")
+	var apply := func(delta: int) -> void:
+		held[0] = clampi(held[0] + delta, lo, hi)
+		value.text = str(held[0])
+		on_change.call(held[0])
+	minus.pressed.connect(func() -> void: apply.call(-1))
+	plus.pressed.connect(func() -> void: apply.call(1))
+	row.add_child(minus)
+	row.add_child(value)
+	row.add_child(plus)
+	box.add_child(row)
+	return box
+
+
+func _step_button(glyph: String) -> Button:
+	var b := Button.new()
+	b.text = glyph
+	b.custom_minimum_size = Vector2(40, 40)
+	b.add_theme_font_size_override("font_size", 24)
+	return b
 
 
 ## Time-of-day and weather pickers, as compact rows of icon toggle buttons under

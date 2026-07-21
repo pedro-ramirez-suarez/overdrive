@@ -1,4 +1,4 @@
-[gd_scene load_steps=7 format=3]
+[gd_scene load_steps=8 format=3]
 
 [ext_resource type="Script" path="res://scripts/vehicle/ArcadeCar.gd" id="1_car"]
 [ext_resource type="Resource" path="res://resources/cars/default_car.tres" id="2_profile"]
@@ -9,15 +9,20 @@
 [sub_resource type="BoxShape3D" id="Shape_body"]
 size = Vector3(0.84, 0.33, 1.74)
 
+[sub_resource type="PhysicsMaterial" id="Mat_car"]
+friction = 0.0
+bounce = 0.0
+
 [node name="Car" type="RigidBody3D"]
 mass = 1200.0
 gravity_scale = 0.0
 can_sleep = false
-continuous_cd = true
+continuous_cd = false
 collision_layer = 2
 collision_mask = 11
 contact_monitor = true
 max_contacts_reported = 4
+physics_material_override = SubResource("Mat_car")
 linear_damp = 0.05
 angular_damp = 0.4
 script = ExtResource("1_car")

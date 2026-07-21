@@ -99,8 +99,12 @@ static func _base_profile(curve: Curve) -> CarProfile:
 	p.engine_force_curve = curve
 	p.suspension_rest = 0.21
 	p.wheel_radius = 0.162
-	p.spring_k = 50000.0
-	p.damping = 4000.0
+	# Stiff enough not to bottom out under the ~3x downforce a loop's centripetal
+	# load imposes at speed. Softer springs let the chassis sink onto the road
+	# mid-loop, so the body collider scraped and caught on the geometry (and the
+	# wheels visibly clipped through). Damping tracks the stiffness to stay settled.
+	p.spring_k = 110000.0
+	p.damping = 8000.0
 	p.brake_force = 20000.0
 	p.reverse_force = 8000.0
 	p.turn_responsiveness = 12.0

@@ -497,6 +497,16 @@ func _update_offroute_penalty() -> void:
 		if r.finished:
 			r.car.external_speed_frac = 1.0
 			continue
+		# On an actual road surface there is never an off-route penalty, however far
+		# that road sits from the racing line. The horizontal distance test can't tell
+		# a loop, bank or bridge — whose geometry bulges well outside its footprint
+		# cells — from genuinely straying onto the terrain, so being physically on the
+		# track (wheels on road) is the authoritative "on route" signal. Without this,
+		# the inside of a loop reads as far off route and drags the car down like a
+		# phantom brake, sometimes twice per loop.
+		if r.car.on_track:
+			r.car.external_speed_frac = 1.0
+			continue
 		var dist := _distance_from_track(r.car.global_position)
 		var t := clampf((dist - OFFROUTE_LENIENT) / (OFFROUTE_MAX - OFFROUTE_LENIENT), 0.0, 1.0)
 		r.car.external_speed_frac = lerpf(1.0, OFFROUTE_MIN_FRAC, t)
@@ -579,12 +589,17 @@ func _update_wrong_way() -> void:
 		return
 	var wrong := false
 	if _player != null and not _player.finished and _waypoints.size() >= 2:
-		var vel: Vector3 = _player.car.linear_velocity
-		vel.y = 0.0
-		if vel.length() > 4.0:
-			var idx: int = _nearest_waypoint_index(_player.car.global_position)
-			var route_dir: Vector3 = _forward_at(idx)
-			wrong = vel.normalized().dot(route_dir) < -0.45
+		var car: ArcadeCar = _player.car
+		# Only meaningful on roughly level ground. On a loop, wall or steep bank the
+		# chassis points up and over, so its horizontal heading momentarily opposes
+		# the route even while you drive the right way round — and airborne there is
+		# no heading at all. Skip the test in those cases to avoid false alarms.
+		if car.grounded and car.surface_normal.dot(Vector3.UP) > 0.6:
+			var vel: Vector3 = car.linear_velocity
+			vel.y = 0.0
+			if vel.length() > 4.0:
+				var idx: int = _nearest_waypoint_index(car.global_position)
+				wrong = vel.normalized().dot(_forward_at(idx)) < -0.45
 	# Blink so it reads as an alert rather than static UI.
 	_wrongway_label.visible = wrong and (int(_race_time * 3.0) % 2 == 0)
 
@@ -815,8 +830,15 @@ func _exit_tree() -> void:
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event.is_action_pressed("ui_cancel"):
-		# Toggle the pause menu (Resume / leave / exit game). Openable and operable
-		# with a controller now that ui_cancel carries a joypad button.
+		# Once finished, Esc just leaves — no pause menu. (The results panel sits over
+		# the pause overlay, so showing it here would trap an un-clickable dialog
+		# behind the standings; and "leave race" is the only sensible action anyway.)
+		if _phase == Phase.FINISHED:
+			get_tree().paused = false
+			get_tree().change_scene_to_file(GameState.return_scene)
+			return
+		# Otherwise toggle the pause menu (Resume / restart / leave / exit game).
+		# Openable and operable with a controller now that ui_cancel carries a button.
 		if _quit_dialog.visible:
 			_close_pause()
 		else:

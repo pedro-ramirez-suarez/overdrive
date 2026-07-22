@@ -361,13 +361,13 @@ func _build_ui() -> void:
 	_save_label.add_theme_constant_override("outline_size", 4)
 	layer.add_child(_save_label)
 
-	# Status (bottom-left).
+	# Status (bottom, clear of the palette panel down the left edge).
 	_status_label = Label.new()
 	_status_label.anchor_top = 1.0
 	_status_label.anchor_bottom = 1.0
-	_status_label.offset_left = 12
-	_status_label.offset_top = -96
-	_status_label.offset_bottom = -12
+	_status_label.offset_left = 190
+	_status_label.offset_top = -64
+	_status_label.offset_bottom = -8
 	_status_label.add_theme_color_override("font_outline_color", Color.BLACK)
 	_status_label.add_theme_constant_override("outline_size", 4)
 	layer.add_child(_status_label)

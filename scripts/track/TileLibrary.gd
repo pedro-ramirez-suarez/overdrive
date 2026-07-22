@@ -80,12 +80,16 @@ func build() -> void:
 			{"cell": Vector2i(0, 0), "dir": TrackGrid.S, "elevation": 0},   # enter column 0, south
 			{"cell": Vector2i(1, -1), "dir": TrackGrid.N, "elevation": 0},  # exit column 1, north
 		], TileDefinition.Category.LOOP, true)
-	# NOTE: the corkscrew is withdrawn from the palette — a 360-degree barrel roll
-	# never became drivable. Its geometry (TileGeo.Kind.CORKSCREW) and scene are
-	# left in place so it can be restored, and TileGeo.Kind must keep CORKSCREW's
-	# slot regardless: every tile scene stores its kind as that enum's integer, so
-	# deleting the entry would silently repurpose the tiles after it. A saved track
-	# still holding one drops it harmlessly — TrackGrid.place ignores unknown ids.
+	# Corkscrew: a 3x9 barrel roll, centred on the middle column so it runs straight
+	# through — enters the S edge of the middle column and exits the N edge of the
+	# middle column nine cells north, with the roll swinging into the flanking
+	# columns (see TileGeo.Kind.CORKSCREW). (TileGeo.Kind must keep the CORKSCREW slot
+	# at its enum value regardless, since tile scenes store the kind as an integer.)
+	_add_multicell("corkscrew", "Corkscrew", "res://scenes/track/tiles/CorkscrewTile.tscn",
+		Vector2i(3, 9), [
+			{"cell": Vector2i(1, 0), "dir": TrackGrid.S, "elevation": 0},
+			{"cell": Vector2i(1, -8), "dir": TrackGrid.N, "elevation": 0},
+		], TileDefinition.Category.CORKSCREW, true)
 	_add("jump", "Jump Ramp", "res://scenes/track/tiles/JumpRampTile.tscn",
 		_jump_sockets(), TileDefinition.Category.SPECIAL, true)
 

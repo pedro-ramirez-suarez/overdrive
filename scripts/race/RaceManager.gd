@@ -131,7 +131,8 @@ func _build_loop_flags(grid: TrackGrid) -> void:
 	_loop_flags = {}
 	for i in range(_path.size()):
 		var def: TileDefinition = grid.get_def(_path[i])
-		if def != null and def.category == TileDefinition.Category.LOOP:
+		if def != null and def.category in [
+				TileDefinition.Category.LOOP, TileDefinition.Category.CORKSCREW]:
 			_loop_flags[i] = true
 
 

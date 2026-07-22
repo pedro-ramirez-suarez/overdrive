@@ -28,8 +28,11 @@ const PIER_GAP: float = 0.08
 @export var cell_length: int = 1
 ## Loop height is 2 * loop_radius.
 @export var loop_radius: float = 4.0
-## Corkscrew helix radius (also half its peak height).
+## Corkscrew helix radius (also half its roll height).
 @export var corkscrew_radius: float = 2.0
+## How high the corkscrew's roll is raised onto its lead-in/out ramps, so the
+## banked road clears the ground instead of dipping under it.
+@export var corkscrew_base: float = 1.2
 ## Vertical rise of a ramp across the tile (one elevation level).
 @export var ramp_rise: float = 3.0
 ## Peak height of a jump ramp lip.
@@ -631,38 +634,62 @@ func _make_frames() -> Array[Dictionary]:
 					"lateral": Vector3(cos(theta), 0.0, sin(theta)),
 				})
 		Kind.CORKSCREW:
-			# One barrel roll advancing S -> N, spread over `cell_length` cells.
-			# The road spirals once around the tile's axis and always faces it, so
-			# the car rides the inside and is held on by track-relative gravity.
+			# A barrel roll built from the loop's circle turned onto the travel axis.
+			# The road spirals once around while advancing S -> N over `cell_length`
+			# cells, centred on the middle column of a 3-wide footprint so it runs
+			# dead straight (the road enters and exits on the same column). The roll
+			# swings symmetrically into the flanking columns.
 			#
-			# Two things this gets right that a naive helix does not:
-			#
-			# 1. The lateral is derived as forward x normal. Using a fixed radial
-			#    vector instead (the previous version) gives something square to the
-			#    normal but NOT to the direction of travel, so the ribbon is sheared
-			#    rather than swept — it comes out as a donut you cannot drive on.
-			# 2. The roll is eased in and out, so at the entry and exit the path runs
-			#    straight down -Z with the road flat and level. That is what lets it
-			#    butt up against a straight tile instead of meeting it at an angle.
+			# The roll is raised onto a low ramp at each end rather than banked at
+			# ground level: banking a road while its centre sits at y=0 sinks the
+			# down-slope edge underground, and lifting only that edge leaves a twisted,
+			# hard-to-drive lead-in. Instead the ends stay FLAT (climbing gently to
+			# `corkscrew_base`), and the whole 360 roll happens up in the air where
+			# every edge clears the ground. That also makes the piece taller.
 			var span: float = float(cell_length) * 2.0 * HALF_CELL
+			var centre_x: float = 2.0 * HALF_CELL  # middle column of the 3-wide plot
+			const RAMP := 0.12   # where the 360 roll begins / ends along the length
+			# The base ramps up over a much LONGER span than the roll's onset, so it is
+			# still rising as the roll starts lifting the road. If the base instead
+			# levelled off before the roll began, the lead-in would crest a convex bump;
+			# overlapping them keeps the climb monotonic, and stretching the base ramp
+			# right out makes the lift so gradual it barely reads as a rise at all.
+			const BRAMP := 0.44
+			# Pass 1: positions (on the raised helix) and surface normals.
+			var cpos: Array[Vector3] = []
+			var cnorm: Array[Vector3] = []
 			for i in range(segments + 1):
 				var t: float = float(i) / float(segments)
-				var s: float = t * t * (3.0 - 2.0 * t)  # smoothstep: flat at both ends
-				var ds: float = 6.0 * t * (1.0 - t)     # ...and its derivative
-				var a: float = TAU * s
-				var n := Vector3(-sin(a), cos(a), 0.0)  # points at the helix axis
-				var fwd := Vector3(
-					corkscrew_radius * cos(a) * TAU * ds,
-					corkscrew_radius * sin(a) * TAU * ds,
-					-span)
-				fwd = fwd.normalized()
+				# Roll only across the middle; the ends stay unrolled (a = 0, flat).
+				# smootherstep (C2: zero 1st AND 2nd derivative at the ends) is used for
+				# both the roll and the base, so not just the slope but the CURVATURE is
+				# continuous through every junction — that is what takes the last of the
+				# roughness out of the lead-in and lead-out.
+				var u: float = clampf((t - RAMP) / (1.0 - 2.0 * RAMP), 0.0, 1.0)
+				var roll: float = u * u * u * (u * (u * 6.0 - 15.0) + 10.0)
+				var a: float = TAU * roll
+				# Base height: climb to `corkscrew_base`, hold it under the roll, descend
+				# over the lead-out — so the roll is airborne and its edges clear ground.
+				var b: float = minf(clampf(t / BRAMP, 0.0, 1.0), clampf((1.0 - t) / BRAMP, 0.0, 1.0))
+				var base: float = corkscrew_base * (b * b * b * (b * (b * 6.0 - 15.0) + 10.0))
+				cpos.append(Vector3(
+					centre_x + corkscrew_radius * sin(a),
+					base + corkscrew_radius * (1.0 - cos(a)),
+					HALF_CELL - span * t))
+				cnorm.append(Vector3(-sin(a), cos(a), 0.0))
+			# Pass 2: forward from the actual path, lateral = forward x normal.
+			for i in range(segments + 1):
+				var f: Vector3
+				if i == 0:
+					f = cpos[1] - cpos[0]
+				elif i == segments:
+					f = cpos[i] - cpos[i - 1]
+				else:
+					f = cpos[i + 1] - cpos[i - 1]
 				frames.append({
-					"pos": Vector3(
-						corkscrew_radius * sin(a),
-						corkscrew_radius * (1.0 - cos(a)),
-						HALF_CELL - span * t),
-					"normal": n,
-					"lateral": fwd.cross(n).normalized(),
+					"pos": cpos[i],
+					"normal": cnorm[i],
+					"lateral": f.normalized().cross(cnorm[i]).normalized(),
 				})
 	return frames
 

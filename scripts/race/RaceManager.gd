@@ -101,6 +101,15 @@ func _ready() -> void:
 		_phase = Phase.FINISHED
 		return
 
+	# Wrong-way mode: keep the start cell first but walk the rest of the loop the
+	# other way round, so waypoints, checkpoints, spawn heading and the AI all follow
+	# the reversed route.
+	if GameState.race_reversed and _path.size() > 2:
+		var tail: Array[Vector2i] = _path.slice(1)
+		tail.reverse()
+		_path = [_path[0]] as Array[Vector2i]
+		_path.append_array(tail)
+
 	_build_waypoints(grid)
 	_build_route_metrics()
 	_build_loop_flags(grid)

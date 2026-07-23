@@ -275,51 +275,66 @@ func _read_player_input() -> void:
 ## weight (see _update_suspension).
 const REFERENCE_MASS := 1200.0
 
+## Wheel contact for DRIVING (grounded, spring, steering) reaches this far past the
+## natural suspension length. Beyond it the wheel has left the road — but road-stick
+## can still act, out to the ray's full (longer) length.
+const GROUND_MARGIN := 0.16
+
+## Road stick: a pull toward the road that engages ONLY once a wheel has lifted off
+## and the surface is still within the ray's reach. It holds the car on continuous
+## surfaces — banked entries and crests — at speed, instead of launching off them,
+## yet a jump ramp's road ends in a gap so past the lip the ray misses and the car
+## still flies. Values are per REFERENCE_MASS, scaled by each car's mass_ratio.
+const STICK_SPRING := 20000.0   # N per metre a wheel is lifted
+const STICK_DAMP := 3000.0      # N per (m/s) of lift-off speed
+const STICK_MAX := 12000.0      # N cap, per wheel
+
 func _update_suspension() -> void:
 	grounded = false
 	var normal_sum: Vector3 = Vector3.ZERO
 	var hit_count: int = 0
 	var offtrack_count: int = 0
 	var natural_length: float = profile.suspension_rest + profile.wheel_radius
+	var ground_reach: float = natural_length + GROUND_MARGIN
+	# Stiffness/damping scale with mass, so EVERY car rides at the same height.
+	# Without this a heavy car (Bulwark, 2400 kg) compresses the fixed spring twice
+	# as far as a light one and sits so low its collision box drags through terrain.
+	var mass_ratio: float = mass / REFERENCE_MASS
 
 	for ray in _wheel_rays:
 		ray.force_raycast_update()
 		if not ray.is_colliding():
 			continue
 
-		grounded = true
-		hit_count += 1
-
-		var collider: Object = ray.get_collider()
-		if collider is Node and (collider as Node).is_in_group("offtrack"):
-			offtrack_count += 1
-
-		var hit_point: Vector3 = ray.get_collision_point()
 		var normal: Vector3 = ray.get_collision_normal()
-		normal_sum += normal
-
 		var ray_origin: Vector3 = ray.global_position
-		var current_length: float = ray_origin.distance_to(hit_point)
+		var current_length: float = ray_origin.distance_to(ray.get_collision_point())
 		var compression: float = natural_length - current_length  # >0 == compressed
-
-		# Velocity of the chassis at this wheel, projected onto the spring axis.
 		var offset: Vector3 = ray_origin - global_position
 		var wheel_velocity: Vector3 = linear_velocity + angular_velocity.cross(offset)
-		var relative_speed: float = wheel_velocity.dot(normal)
+		var relative_speed: float = wheel_velocity.dot(normal)  # >0 == lifting away
 
-		# Spring pushes out along the surface normal; damping opposes motion.
-		# Clamp to push-only so an over-extended wheel never sucks the car down.
-		#
-		# Stiffness and damping scale with mass, so EVERY car rides at the same
-		# height. Without this a heavy car (Bulwark, 2400 kg) compresses the fixed
-		# spring twice as far as a light one and sits so low its collision box drags
-		# through the terrain — which reads as the car being buried and getting stuck
-		# off-track. Scaling cancels the mass, so rest compression is constant.
-		var mass_ratio: float = mass / REFERENCE_MASS
-		var k: float = profile.spring_k * mass_ratio
-		var damp: float = profile.damping * mass_ratio
-		var force_mag: float = maxf(compression * k - relative_speed * damp, 0.0)
-		apply_force(normal * force_mag, offset)
+		# In driving contact: grounded, spring push, surface normal, off-track test.
+		if current_length <= ground_reach:
+			grounded = true
+			hit_count += 1
+			var collider: Object = ray.get_collider()
+			if collider is Node and (collider as Node).is_in_group("offtrack"):
+				offtrack_count += 1
+			normal_sum += normal
+			# Spring pushes out along the surface normal; damping opposes motion.
+			var k: float = profile.spring_k * mass_ratio
+			var damp: float = profile.damping * mass_ratio
+			var force_mag: float = maxf(compression * k - relative_speed * damp, 0.0)
+			apply_force(normal * force_mag, offset)
+
+		# Road stick: a lifted-off wheel (compression < 0) that can still see the road
+		# gets pulled back toward it — a spring on the gap plus damping on the lift-off
+		# speed, capped so it plants the car without gluing it.
+		if compression < 0.0:
+			var pull: float = (-compression * STICK_SPRING + maxf(relative_speed, 0.0) * STICK_DAMP) * mass_ratio
+			pull = minf(pull, STICK_MAX * mass_ratio)
+			apply_force(-normal * pull, offset)
 
 	if hit_count > 0:
 		surface_normal = (normal_sum / float(hit_count)).normalized()

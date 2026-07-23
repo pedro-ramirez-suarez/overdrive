@@ -100,8 +100,21 @@ func _setup_panel() -> Control:
 		func(v: int) -> void: GameState.race_ai_count = v))
 	col.add_child(steppers)
 
+	col.add_child(_reverse_toggle())
 	col.add_child(_atmosphere_bar())
 	return panel
+
+
+## Toggle for racing the circuit backwards (the "wrong way" round).
+func _reverse_toggle() -> Control:
+	var row := _labelled_row("Direction")
+	var check := CheckButton.new()
+	check.text = "Reverse (wrong way)"
+	check.button_pressed = GameState.race_reversed
+	check.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	check.toggled.connect(func(on: bool) -> void: GameState.race_reversed = on)
+	row.add_child(check)
+	return row
 
 
 ## A big, obvious "− value +" stepper: a captioned value flanked by round buttons.

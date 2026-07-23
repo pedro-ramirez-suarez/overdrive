@@ -16,6 +16,8 @@ var selected_car: CarProfile
 # Race settings (M4).
 var race_laps: int = 3
 var race_ai_count: int = 3
+## Race the circuit backwards (the "wrong way" round).
+var race_reversed: bool = false
 
 # Atmosphere, chosen on the track-select screen — see Atmosphere.gd.
 var race_time: Atmosphere.TimeOfDay = Atmosphere.TimeOfDay.NOON

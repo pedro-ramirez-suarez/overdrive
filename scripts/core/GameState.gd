@@ -42,3 +42,16 @@ func _ready() -> void:
 ## Index of the currently selected car within the roster.
 func selected_car_index() -> int:
 	return maxi(0, roster.find(selected_car))
+
+
+## The roster profile whose model matches `path`, or null. Lets a replay reuse a
+## car's full profile — including its auto-fit sizing — rather than a reconstructed
+## stub, so fit-sized models (the hero cars) render at the right scale even in older
+## recordings that never stored the fit fields.
+func profile_for_model(path: String) -> CarProfile:
+	if path == "":
+		return null
+	for p in roster:
+		if p.model_scene != null and p.model_scene.resource_path == path:
+			return p
+	return null

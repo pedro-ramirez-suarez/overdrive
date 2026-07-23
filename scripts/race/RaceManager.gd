@@ -55,6 +55,11 @@ var _results_label: Label
 var _results_panel: Control
 var _wrongway_label: Label
 var _speed_lines: ColorRect
+var _speedo: Speedometer
+## Controls hint, shown briefly at the start then faded out (it only distracts once
+## you know the keys).
+var _hint_label: Label
+var _hint_time_left: float = 8.0
 var _quit_dialog: Control
 var _minimap: MiniMap
 
@@ -104,6 +109,8 @@ func _ready() -> void:
 	_spawn_racers(grid, lib)
 	_spawn_ghost()
 	_add_skidmarks()
+	if _speedo != null and _player != null:
+		_speedo.car = _player.car
 	if _minimap != null:
 		_minimap.setup(_track_points, _racers)
 	_add_camera(Vector3(0, 4, 12))
@@ -246,11 +253,16 @@ func _spawn_ghost() -> void:
 	_ghost_car = load(CAR_SCENE).instantiate()
 	var model_path: String = info.get("model_path", "")
 	if model_path != "":
-		var prof := CarProfile.new()
-		prof.model_scene = load(model_path)
-		prof.model_scale = info.get("model_scale", 1.0)
-		prof.model_y_offset = info.get("model_y_offset", 0.0)
-		prof.model_yaw = info.get("model_yaw", 0.0)
+		# Prefer the live roster profile (correct auto-fit); fall back to a stub.
+		var prof: CarProfile = GameState.profile_for_model(model_path)
+		if prof == null:
+			prof = CarProfile.new()
+			prof.model_scene = load(model_path)
+			prof.model_scale = info.get("model_scale", 1.0)
+			prof.model_y_offset = info.get("model_y_offset", 0.0)
+			prof.model_yaw = info.get("model_yaw", 0.0)
+			prof.model_fit_width = info.get("model_fit_width", 0.0)
+			prof.model_fit_length = info.get("model_fit_length", 0.0)
 		_ghost_car.profile = prof
 	add_child(_ghost_car)
 	# Turn it into a visual-only prop: no physics, no collision, faded and tinted so
@@ -291,6 +303,7 @@ func _update_ghost() -> void:
 # --- Phases -----------------------------------------------------------------
 
 func _process(delta: float) -> void:
+	_update_hint(delta)
 	match _phase:
 		Phase.COUNTDOWN:
 			_countdown -= delta
@@ -308,6 +321,18 @@ func _process(delta: float) -> void:
 			_update_wrong_way()
 		Phase.FINISHED:
 			pass
+
+
+## Count the controls hint down and fade it out over its last second, so it's there
+## long enough to read at the start but gone before it becomes clutter.
+func _update_hint(delta: float) -> void:
+	if _hint_label == null or not _hint_label.visible:
+		return
+	_hint_time_left -= delta
+	if _hint_time_left <= 1.0:
+		_hint_label.modulate.a = clampf(_hint_time_left, 0.0, 1.0)
+	if _hint_time_left <= 0.0:
+		_hint_label.visible = false
 
 
 func _physics_process(_delta: float) -> void:
@@ -735,16 +760,28 @@ func _build_hud() -> void:
 	_results_label.add_theme_font_size_override("font_size", 24)
 	results_pad.add_child(_results_label)
 
+	# Speedometer, bottom-left corner. Its car is wired up once the player spawns.
+	_speedo = Speedometer.new()
+	_speedo.anchor_left = 0.0
+	_speedo.anchor_top = 1.0
+	_speedo.anchor_bottom = 1.0
+	_speedo.offset_left = 16
+	_speedo.offset_top = -184
+	_speedo.offset_bottom = -16
+	layer.add_child(_speedo)
+
+	# Controls hint sits above the speedometer so the two don't overlap.
 	var hint := Label.new()
 	hint.text = "Esc: pause    R: respawn    C: camera"
 	hint.anchor_top = 1.0
 	hint.anchor_bottom = 1.0
-	hint.offset_left = 14
-	hint.offset_top = -34
-	hint.offset_bottom = -8
+	hint.offset_left = 16
+	hint.offset_top = -212
+	hint.offset_bottom = -188
 	hint.add_theme_color_override("font_outline_color", Color.BLACK)
 	hint.add_theme_constant_override("outline_size", 4)
 	layer.add_child(hint)
+	_hint_label = hint
 
 
 func _update_countdown_hud() -> void:

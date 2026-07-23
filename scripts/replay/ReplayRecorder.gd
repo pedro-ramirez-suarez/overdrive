@@ -25,6 +25,10 @@ func start(racers: Array) -> void:
 			"model_scale": profile.model_scale if profile != null else 1.0,
 			"model_y_offset": profile.model_y_offset if profile != null else 0.0,
 			"model_yaw": profile.model_yaw if profile != null else 0.0,
+			# The auto-fit fields matter too: without them a model that is sized by
+			# fit (the hero cars) falls back to model_scale and renders at raw size.
+			"model_fit_width": profile.model_fit_width if profile != null else 0.0,
+			"model_fit_length": profile.model_fit_length if profile != null else 0.0,
 		})
 	replay.init_cars(infos)
 

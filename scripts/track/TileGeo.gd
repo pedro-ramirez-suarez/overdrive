@@ -112,7 +112,10 @@ func _build() -> void:
 	match kind:
 		Kind.TUNNEL: _add_tunnel_shell(faces)
 		Kind.CROSSROADS: _add_cross_arms(faces)
-		Kind.OVERPASS: _add_overpass_lower(faces)
+		Kind.OVERPASS:
+			_add_overpass_lower(faces)
+			_add_guardrails(frames)   # rail the raised deck
+		Kind.HELIX: _add_guardrails(frames)
 		Kind.BANKED_CURVE, Kind.BANKED_STRAIGHT, Kind.BANKED_ENTRY, Kind.BANKED_EXIT:
 			_add_bank_skirt(frames, faces)
 		_: pass
@@ -260,6 +263,106 @@ func _add_bank_skirt(frames: Array[Dictionary], faces: PackedVector3Array) -> vo
 		_add_tri(st, faces, e0, e1, g1, n, n, n)
 		_add_tri(st, faces, e0, g1, g0, n, n, n)
 	_commit_extra(st, "BankSkirt", _road_material())
+
+
+## Galvanised W-beam guardrails down both edges of the road, so a car that runs
+## wide on an elevated piece (the helix, the overpass deck) is turned back rather
+## than dropping off. The visible part is a thin beam at rail height on posts; the
+## barrier the car actually hits is a taller solid wall from the road up to the
+## beam, so a fast car can't slip under. Both live on the WALL layer — the car body
+## collides with it while the wheel rays (which read only the road) ignore it, so it
+## never reads as drivable surface.
+const RAIL_H := 0.5          # beam centre above the road
+const RAIL_BEAM := 0.24      # beam panel height
+const RAIL_POST_GAP := 2.3   # metres between posts
+
+## Collision reaches from just above the road up to the top of the beam, so the car
+## can neither slip under nor vault over.
+const RAIL_LOW := 0.05
+const RAIL_HIGH := 0.66
+const RAIL_THICK := 0.3
+
+func _add_guardrails(frames: Array[Dictionary]) -> void:
+	if frames.size() < 2:
+		return
+	var hw: float = road_width * 0.5
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var scratch := PackedVector3Array()   # visual-only faces; collected and dropped
+
+	# Collision is a chain of thick, oriented BOX shapes, not a thin trimesh: at race
+	# speed a flat trimesh tunnels (the perimeter fence uses boxes for the same
+	# reason). On the WALL layer, so the car body stops on it and the wheel rays,
+	# which read only the road, ignore it.
+	var wall: StaticBody3D = StaticBody3D.new()
+	wall.name = "GuardrailWalls"
+	wall.collision_layer = Constants.WALL_BIT
+	wall.collision_mask = 0
+
+	for side in [1.0, -1.0]:
+		var carry := 0.0
+		for i in range(frames.size() - 1):
+			var n0: Vector3 = frames[i].normal
+			var n1: Vector3 = frames[i + 1].normal
+			var e0: Vector3 = (frames[i].pos as Vector3) + (frames[i].lateral as Vector3) * (hw * side)
+			var e1: Vector3 = (frames[i + 1].pos as Vector3) + (frames[i + 1].lateral as Vector3) * (hw * side)
+			var out: Vector3 = (frames[i].lateral as Vector3) * side  # outward face normal
+
+			# Visible beam: a thin panel centred at rail height.
+			var bt0: Vector3 = e0 + n0 * (RAIL_H + RAIL_BEAM * 0.5)
+			var bb0: Vector3 = e0 + n0 * (RAIL_H - RAIL_BEAM * 0.5)
+			var bt1: Vector3 = e1 + n1 * (RAIL_H + RAIL_BEAM * 0.5)
+			var bb1: Vector3 = e1 + n1 * (RAIL_H - RAIL_BEAM * 0.5)
+			_add_tri(st, scratch, bt0, bt1, bb1, out, out, out)
+			_add_tri(st, scratch, bt0, bb1, bb0, out, out, out)
+
+			# One thick collision box for this segment, spanning road-to-beam height
+			# and oriented along the segment (so it follows a curved edge).
+			var m0: Vector3 = e0 + n0 * ((RAIL_LOW + RAIL_HIGH) * 0.5)
+			var m1: Vector3 = e1 + n1 * ((RAIL_LOW + RAIL_HIGH) * 0.5)
+			var seg_vec: Vector3 = m1 - m0
+			var length: float = seg_vec.length()
+			if length > 0.02:
+				var dir: Vector3 = seg_vec / length
+				var up_axis: Vector3 = (n0 + n1).normalized()
+				var outward: Vector3 = dir.cross(up_axis).normalized()
+				up_axis = outward.cross(dir).normalized()
+				var box := BoxShape3D.new()
+				box.size = Vector3(length + 0.04, RAIL_HIGH - RAIL_LOW, RAIL_THICK)
+				var cs := CollisionShape3D.new()
+				cs.shape = box
+				cs.transform = Transform3D(Basis(dir, up_axis, outward), (m0 + m1) * 0.5)
+				wall.add_child(cs)
+
+			# Posts at a fixed spacing, interpolated within the segment so a straight
+			# deck (two frames) still gets several. Visual only — the boxes are the
+			# barrier.
+			var seg: float = e0.distance_to(e1)
+			var d: float = carry
+			while d < seg:
+				var p: Vector3 = e0.lerp(e1, d / seg) if seg > 0.0001 else e0
+				_add_box_solid(st, scratch, p + Vector3.UP * (RAIL_H * 0.5), Vector3(0.1, RAIL_H, 0.1))
+				d += RAIL_POST_GAP
+			carry = maxf(d - seg, 0.0)
+
+	_commit_extra(st, "Guardrails", _rail_material())
+	add_child(wall)
+
+
+static var _rail_mat: StandardMaterial3D = null
+
+
+## Galvanised-steel look for the guardrails: light, fairly shiny grey.
+func _rail_material() -> StandardMaterial3D:
+	if _rail_mat != null:
+		return _rail_mat
+	var mat := StandardMaterial3D.new()
+	mat.albedo_color = Color(0.72, 0.74, 0.77)
+	mat.metallic = 0.85
+	mat.roughness = 0.4
+	mat.cull_mode = BaseMaterial3D.CULL_DISABLED
+	_rail_mat = mat
+	return mat
 
 
 ## An axis-aligned solid box, into both the mesh and the collision.

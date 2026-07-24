@@ -75,6 +75,15 @@ func build() -> void:
 		_ramp_sockets(false), TileDefinition.Category.RAMP, false)
 	_add("ramp_down", "Ramp Down", "res://scenes/track/tiles/RampDownTile.tscn",
 		_ramp_sockets(true), TileDefinition.Category.RAMP, false)
+	# Helix: a spiral ramp over a 3x3 block. Enters flat on the S edge of the west
+	# column and leaves on the N edge of the same column ONE LEVEL up, having turned
+	# a full circle — so it reaches an overpass deck where a straight ramp would need
+	# a long run. Same socket levels as a ramp, so it drops in wherever one would.
+	_add_multicell("helix", "Helix", "res://scenes/track/tiles/HelixTile.tscn",
+		Vector2i(3, 3), [
+			{"cell": Vector2i(0, 0), "dir": TrackGrid.S, "elevation": 0},
+			{"cell": Vector2i(0, -2), "dir": TrackGrid.N, "elevation": OVERPASS_LEVELS},
+		], TileDefinition.Category.RAMP, false)
 	_add_multicell("loop", "Loop", "res://scenes/track/tiles/LoopTile.tscn",
 		Vector2i(2, 2), [
 			{"cell": Vector2i(0, 0), "dir": TrackGrid.S, "elevation": 0},   # enter column 0, south

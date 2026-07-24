@@ -150,6 +150,12 @@ static func _glyph(id: String) -> Array:
 			return [_seg(0.12, 0.84, 0.9, 0.84, 0.07, DIM),
 				_seg(0.12, 0.26, 0.88, 0.8, 0.15),
 				_seg(0.12, 0.26, 0.12, 0.8, 0.09, DIM)]
+		"helix":
+			# Plan view: one full turn, the road running in at ground level and out
+			# (accented) a level higher.
+			return [_arc(0.5, 0.5, 0.26, 0.0, TAU, 0.12),
+				_seg(0.24, 0.96, 0.24, 0.52, 0.12),
+				_seg(0.24, 0.48, 0.24, 0.04, 0.12, ACCENT)]
 		"loop":
 			# Side view: the road runs in, loops, runs out.
 			return [_seg(0.06, 0.88, 0.94, 0.88, 0.1),

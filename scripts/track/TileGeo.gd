@@ -13,7 +13,7 @@ extends StaticBody3D
 enum Kind {
 	STRAIGHT, START, CURVE, RAMP, LOOP, CORKSCREW, JUMP, WIDE_CURVE, TUNNEL,
 	BANKED_CURVE, CROSSROADS, OVERPASS, PIPE, HALF_PIPE, PIPE_ENTRY, HALF_PIPE_ENTRY,
-	BANKED_STRAIGHT, BANKED_ENTRY, BANKED_EXIT,
+	BANKED_STRAIGHT, BANKED_ENTRY, BANKED_EXIT, HELIX,
 }
 
 const HALF_CELL: float = 4.0
@@ -33,6 +33,8 @@ const PIER_GAP: float = 0.08
 ## How high the corkscrew's roll is raised onto its lead-in/out ramps, so the
 ## banked road clears the ground instead of dipping under it.
 @export var corkscrew_base: float = 1.2
+## Helix: radius of the spiral, measured to the road centreline.
+@export var helix_radius: float = 8.0
 ## Vertical rise of a ramp across the tile (one elevation level).
 @export var ramp_rise: float = 3.0
 ## Peak height of a jump ramp lip.
@@ -576,6 +578,34 @@ func _make_frames() -> Array[Dictionary]:
 					beta = bank_angle * _smoothstep(1.0 - t)
 				frames.append(_banked_frame(
 					Vector3(0.0, 0.0, HALF_CELL - 2.0 * HALF_CELL * t), Vector3.RIGHT, beta))
+		Kind.HELIX:
+			# A spiral ramp across a 3x3 block: the road runs in flat along the west
+			# column, makes one full 360-degree turn while climbing exactly one
+			# elevation level, then runs out flat one level higher. A compact way up to
+			# an overpass deck where a straight ramp would need a long run.
+			#
+			# The circle is TANGENT to the entry line, so the turn starts and finishes
+			# at the same spot one level apart — the road passes over itself there, the
+			# same one-level clearance the overpass uses.
+			#
+			# The lateral is the outward radial, which at the tangent point is -X; the
+			# flat runs use LEFT to match, so the ribbon never flips at the joins.
+			var cx: float = 2.0 * HALF_CELL    # circle centre: one cell east...
+			var cz: float = -2.0 * HALF_CELL   # ...and one cell north of the anchor
+			var rise: float = Constants.ELEVATION_STEP
+			frames.append({"pos": Vector3(0.0, 0.0, HALF_CELL), "normal": Vector3.UP, "lateral": Vector3.LEFT})
+			frames.append({"pos": Vector3(0.0, 0.0, cz), "normal": Vector3.UP, "lateral": Vector3.LEFT})
+			for i in range(1, segments + 1):
+				var t: float = float(i) / float(segments)
+				var phi: float = PI + TAU * t
+				# Eased climb, so the turn leaves and rejoins the flat runs level.
+				var y: float = rise * (t * t * (3.0 - 2.0 * t))
+				frames.append({
+					"pos": Vector3(cx + helix_radius * cos(phi), y, cz + helix_radius * sin(phi)),
+					"normal": Vector3.UP,
+					"lateral": Vector3(cos(phi), 0.0, sin(phi)),
+				})
+			frames.append({"pos": Vector3(0.0, rise, cz - 3.0 * HALF_CELL), "normal": Vector3.UP, "lateral": Vector3.LEFT})
 		Kind.RAMP:
 			# Straight, constant-angle slope from S (+Z, level 0) to N (-Z,
 			# +ramp_rise) — matches the terrain's linear ramp band exactly.

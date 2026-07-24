@@ -89,7 +89,11 @@ func _build_left() -> Control:
 	var cam := Camera3D.new()
 	# Closer and lower so the car fills much more of the preview.
 	cam.position = Vector3(0.0, 0.55, 2.1)
-	cam.look_at(Vector3(0.0, 0.15, 0.0), Vector3.UP)
+	# Pitch set directly rather than with look_at: this subtree is built before it is
+	# added to the scene, and look_at needs the node in the tree — it errored and left
+	# the camera on its default heading, aimed past the car. Angle is the drop from
+	# the camera down to the point it should sit on (y 0.55 -> 0.15 over z 2.1).
+	cam.rotation = Vector3(-atan2(0.40, 2.10), 0.0, 0.0)
 	sv.add_child(cam)
 	_preview_pivot = Node3D.new()
 	# Lifted so the car sits in the upper part of the preview, clear of the info

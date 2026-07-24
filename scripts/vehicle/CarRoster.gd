@@ -65,21 +65,61 @@ const MODEL_DEFS := [
 ]
 
 
+const RGSDEV := "res://assets/models/rgsdev/%s.fbx"
+
+# Low-poly vehicle pack by Raphael Gonçalves (Rgsdev), CC0 / public domain — free
+# for any use, commercial included, no credit required. Unlike MODEL_DEFS these are
+# generic invented vehicle types with no real-marque geometry or badges, so they are
+# safe to ship as-is (SPEC.md §2).
+#
+# Every model in the pack faces +Z with its wheels named front/rear, so all of them
+# take yaw PI to meet our -Z forward. `fit` is the target WIDTH in meters, as with
+# MODEL_DEFS; the colour mirrors each model's own baked paint so the minimap dot
+# matches the car you see. Vehicles whose length far outran the chassis (bus,
+# firetruck, limousine, artic) are deliberately left out of the import.
+# [file, display, tagline, fit, yaw, mass, engine, max, grip, steer_low, steer_high, handbrake, color]
+const RGSDEV_DEFS := [
+	["sports", "Vega S", "Crisp mid-engine coupe, eager to turn", 0.95, PI, 1050, 17000, 68, 0.15, 2.6, 1.2, 0.20, Color(0.78, 0.15, 0.11)],
+	["roadster", "Zephyr R", "Open-top featherweight, playful tail", 0.95, PI, 1000, 16000, 64, 0.13, 2.7, 1.25, 0.22, Color(0.00, 0.24, 0.74)],
+	["muscle", "Torque 8", "Big-block bruiser, all shoulders", 1.02, PI, 1500, 20000, 66, 0.11, 2.1, 0.95, 0.30, Color(1.00, 0.99, 0.19)],
+	["muscle_2", "Rampart GT", "Long-hood cruiser with a mean streak", 1.02, PI, 1450, 19500, 65, 0.115, 2.15, 1.0, 0.28, Color(0.63, 0.69, 0.78)],
+	["sedan", "Corva", "Sensible saloon, surprisingly willing", 0.98, PI, 1250, 15000, 56, 0.12, 2.3, 1.05, 0.25, Color(0.63, 0.69, 0.78)],
+	["hatchback", "Sprig", "Tiny, darty, impossible to upset", 0.98, PI, 1000, 13500, 53, 0.15, 2.8, 1.3, 0.22, Color(0.86, 0.56, 0.08)],
+	["taxi", "Yellowtail", "Knows every shortcut in town", 0.98, PI, 1300, 14500, 54, 0.12, 2.3, 1.05, 0.25, Color(1.00, 0.81, 0.24)],
+	["suv", "Summit", "Tall, heavy, planted through anything", 1.05, PI, 1550, 17000, 58, 0.115, 2.0, 0.9, 0.30, Color(0.23, 0.05, 0.10)],
+	["pickup", "Buckboard", "Workhorse with a loose back end", 1.05, PI, 1450, 16500, 57, 0.12, 2.1, 0.95, 0.28, Color(0.00, 0.35, 0.15)],
+	["van", "Parcel", "Boxy, slow to turn, hard to stop", 1.05, PI, 1500, 14500, 52, 0.11, 2.0, 0.95, 0.30, Color(0.00, 0.05, 0.31)],
+	["ambulance", "Lifeline", "Heavy but hurried", 1.05, PI, 1600, 16000, 56, 0.115, 2.0, 0.9, 0.28, Color(1.00, 0.98, 1.00)],
+	["truck", "Anvil", "Freight-train momentum, stops eventually", 1.25, PI, 1900, 20000, 55, 0.10, 1.9, 0.85, 0.35, Color(0.00, 0.35, 0.15)],
+	["monster_truck", "Stomper", "Absurd tyres, shrugs off landings", 1.30, PI, 1800, 21000, 58, 0.14, 2.4, 1.1, 0.30, Color(0.02, 0.54, 0.82)],
+	["police_sports", "Pursuit S", "Pursuit-spec coupe, relentless", 0.95, PI, 1100, 18500, 70, 0.15, 2.6, 1.2, 0.20, Color(0.01, 0.00, 0.00)],
+	["police_muscle", "Enforcer V8", "Interceptor with a big motor", 1.02, PI, 1500, 20500, 68, 0.12, 2.2, 1.0, 0.28, Color(0.01, 0.00, 0.00)],
+	["police_sedan", "Patrol", "Standard issue, quietly quick", 0.98, PI, 1350, 17500, 62, 0.13, 2.4, 1.1, 0.25, Color(0.01, 0.00, 0.00)],
+	["police_suv", "Precinct", "Riot-heavy and unbothered", 1.05, PI, 1600, 18000, 60, 0.12, 2.05, 0.92, 0.30, Color(0.01, 0.00, 0.00)],
+]
+
+
 static func build() -> Array[CarProfile]:
 	var roster: Array[CarProfile] = []
 	var curve := _falloff_curve()
 	for d in MODEL_DEFS:
 		roster.append(_hero(d, curve))
+	for d in RGSDEV_DEFS:
+		roster.append(_hero(d, curve, RGSDEV))
 	for d in KENNEY_DEFS:
 		roster.append(_kenney(d, curve))
 	return roster
 
 
-static func _hero(d: Array, curve: Curve) -> CarProfile:
+## Build a width-fitted model car from a [file, display, tagline, fit, yaw, mass,
+## engine, max, grip, steer_low, steer_high, handbrake, color] row. `path_fmt` is
+## the asset-path format for the model, so the same row shape serves both the
+## res://assets/models/cars .glb set and the Rgsdev .fbx pack.
+static func _hero(d: Array, curve: Curve, path_fmt: String = CARS) -> CarProfile:
 	var p := _base_profile(curve)
 	p.display_name = d[1]
 	p.tagline = d[2]
-	p.model_scene = load(CARS % d[0])
+	p.model_scene = load(path_fmt % d[0])
 	p.model_fit_width = float(d[3])
 	p.model_yaw = float(d[4])
 	p.mass = float(d[5])

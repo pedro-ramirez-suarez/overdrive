@@ -1181,7 +1181,10 @@ func _icon_button(icon_id: String, tooltip: String) -> Button:
 	b.icon = EditorIcons.get_icon(icon_id)
 	b.tooltip_text = tooltip
 	b.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	b.custom_minimum_size = Vector2(46.0, 46.0)
+	# Sized so the whole palette (13 rows of icons plus its section labels) fits the
+	# 720-tall design viewport — at 46 it ran off the bottom and cut the last row of
+	# tools off on a default-resolution window.
+	b.custom_minimum_size = Vector2(40.0, 40.0)
 	return b
 
 

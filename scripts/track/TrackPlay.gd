@@ -15,7 +15,7 @@ func _ready() -> void:
 	TrackWorld.populate(self, grid, lib)
 	_spawn_car(grid, lib)
 	_add_camera()
-	_add_hint()
+	_add_hud()
 
 
 func _spawn_car(grid: TrackGrid, lib: TileLibrary) -> void:
@@ -45,7 +45,7 @@ func _add_camera() -> void:
 	add_child(cam)
 
 
-func _add_hint() -> void:
+func _add_hud() -> void:
 	var layer := CanvasLayer.new()
 	add_child(layer)
 	var label := Label.new()
@@ -54,6 +54,17 @@ func _add_hint() -> void:
 	label.add_theme_color_override("font_outline_color", Color.BLACK)
 	label.add_theme_constant_override("outline_size", 4)
 	layer.add_child(label)
+
+	# Same speedometer as the race, bottom-left. The hint sits top-left, so the two
+	# don't collide here.
+	var speedo := Speedometer.new()
+	speedo.car = _car
+	speedo.anchor_top = 1.0
+	speedo.anchor_bottom = 1.0
+	speedo.offset_left = 16
+	speedo.offset_top = -184
+	speedo.offset_bottom = -16
+	layer.add_child(speedo)
 
 
 func _unhandled_input(event: InputEvent) -> void:

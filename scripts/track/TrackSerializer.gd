@@ -6,7 +6,13 @@ extends RefCounted
 
 const VERSION := 1
 const USER_DIR := "user://tracks"
-const BUNDLED := ["res://tracks/sample_oval.json"]
+## Tracks that ship with the game and appear in the list on a fresh install, before
+## the player has built any of their own.
+const BUNDLED := [
+	"res://tracks/sample_oval.json",
+	"res://tracks/fast.json",
+	"res://tracks/test_track.json",
+]
 const NONE := Vector2i(2147483647, 2147483647)
 
 

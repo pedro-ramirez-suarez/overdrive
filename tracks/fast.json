@@ -1,0 +1,411 @@
+{
+  "author": "player",
+  "grid": [
+    {
+      "cell_x": -4,
+      "cell_y": 5,
+      "def_id": "straight",
+      "elevation_level": 0,
+      "rotation": 0
+    },
+    {
+      "cell_x": -4,
+      "cell_y": 4,
+      "def_id": "start",
+      "elevation_level": 0,
+      "rotation": 0
+    },
+    {
+      "cell_x": -4,
+      "cell_y": 3,
+      "def_id": "straight",
+      "elevation_level": 0,
+      "rotation": 0
+    },
+    {
+      "cell_x": 2,
+      "cell_y": 1,
+      "def_id": "straight",
+      "elevation_level": 0,
+      "rotation": 0
+    },
+    {
+      "cell_x": 2,
+      "cell_y": 0,
+      "def_id": "straight",
+      "elevation_level": 0,
+      "rotation": 0
+    },
+    {
+      "cell_x": -3,
+      "cell_y": 6,
+      "def_id": "straight",
+      "elevation_level": 0,
+      "rotation": 1
+    },
+    {
+      "cell_x": -2,
+      "cell_y": 6,
+      "def_id": "straight",
+      "elevation_level": 0,
+      "rotation": 1
+    },
+    {
+      "cell_x": 1,
+      "cell_y": -1,
+      "def_id": "straight",
+      "elevation_level": 0,
+      "rotation": 1
+    },
+    {
+      "cell_x": 0,
+      "cell_y": -1,
+      "def_id": "straight",
+      "elevation_level": 0,
+      "rotation": 1
+    },
+    {
+      "cell_x": 2,
+      "cell_y": -1,
+      "def_id": "curve",
+      "elevation_level": 0,
+      "rotation": 2
+    },
+    {
+      "cell_x": -4,
+      "cell_y": 6,
+      "def_id": "curve",
+      "elevation_level": 0,
+      "rotation": 0
+    },
+    {
+      "cell_x": -4,
+      "cell_y": 1,
+      "def_id": "banked_curve",
+      "elevation_level": 0,
+      "rotation": 0
+    },
+    {
+      "cell_x": 2,
+      "cell_y": 2,
+      "def_id": "loop",
+      "elevation_level": 0,
+      "rotation": 2
+    },
+    {
+      "cell_x": 1,
+      "cell_y": 4,
+      "def_id": "straight",
+      "elevation_level": 0,
+      "rotation": 2
+    },
+    {
+      "cell_x": 2,
+      "cell_y": 6,
+      "def_id": "wide_curve",
+      "elevation_level": 0,
+      "rotation": 3
+    },
+    {
+      "cell_x": 3,
+      "cell_y": 6,
+      "def_id": "wide_curve",
+      "elevation_level": 0,
+      "rotation": 1
+    },
+    {
+      "cell_x": 4,
+      "cell_y": 8,
+      "def_id": "straight",
+      "elevation_level": 0,
+      "rotation": 2
+    },
+    {
+      "cell_x": 4,
+      "cell_y": 9,
+      "def_id": "straight",
+      "elevation_level": 0,
+      "rotation": 2
+    },
+    {
+      "cell_x": 4,
+      "cell_y": 10,
+      "def_id": "straight",
+      "elevation_level": 0,
+      "rotation": 2
+    },
+    {
+      "cell_x": 4,
+      "cell_y": 11,
+      "def_id": "straight",
+      "elevation_level": 0,
+      "rotation": 2
+    },
+    {
+      "cell_x": 4,
+      "cell_y": 12,
+      "def_id": "straight",
+      "elevation_level": 0,
+      "rotation": 2
+    },
+    {
+      "cell_x": 4,
+      "cell_y": 13,
+      "def_id": "straight",
+      "elevation_level": 0,
+      "rotation": 2
+    },
+    {
+      "cell_x": 4,
+      "cell_y": 16,
+      "def_id": "pipe",
+      "elevation_level": 0,
+      "rotation": 2
+    },
+    {
+      "cell_x": 4,
+      "cell_y": 17,
+      "def_id": "pipe",
+      "elevation_level": 0,
+      "rotation": 2
+    },
+    {
+      "cell_x": 4,
+      "cell_y": 18,
+      "def_id": "pipe",
+      "elevation_level": 0,
+      "rotation": 2
+    },
+    {
+      "cell_x": 4,
+      "cell_y": 15,
+      "def_id": "pipe",
+      "elevation_level": 0,
+      "rotation": 2
+    },
+    {
+      "cell_x": 4,
+      "cell_y": 14,
+      "def_id": "pipe_entry",
+      "elevation_level": 0,
+      "rotation": 2
+    },
+    {
+      "cell_x": 4,
+      "cell_y": 21,
+      "def_id": "banked_curve",
+      "elevation_level": 0,
+      "rotation": 2
+    },
+    {
+      "cell_x": 1,
+      "cell_y": 10,
+      "def_id": "wide_curve",
+      "elevation_level": 0,
+      "rotation": 2
+    },
+    {
+      "cell_x": -1,
+      "cell_y": 6,
+      "def_id": "wide_curve",
+      "elevation_level": 0,
+      "rotation": 1
+    },
+    {
+      "cell_x": 1,
+      "cell_y": 9,
+      "def_id": "straight",
+      "elevation_level": 0,
+      "rotation": 0
+    },
+    {
+      "cell_x": 1,
+      "cell_y": 8,
+      "def_id": "curve",
+      "elevation_level": 0,
+      "rotation": 2
+    },
+    {
+      "cell_x": 0,
+      "cell_y": 8,
+      "def_id": "curve",
+      "elevation_level": 0,
+      "rotation": 0
+    },
+    {
+      "cell_x": -3,
+      "cell_y": 11,
+      "def_id": "curve",
+      "elevation_level": 0,
+      "rotation": 1
+    },
+    {
+      "cell_x": -2,
+      "cell_y": 11,
+      "def_id": "straight",
+      "elevation_level": 0,
+      "rotation": 1
+    },
+    {
+      "cell_x": -1,
+      "cell_y": 11,
+      "def_id": "straight",
+      "elevation_level": 0,
+      "rotation": 1
+    },
+    {
+      "cell_x": 1,
+      "cell_y": 23,
+      "def_id": "banked_entry",
+      "elevation_level": 0,
+      "rotation": 1
+    },
+    {
+      "cell_x": -1,
+      "cell_y": 23,
+      "def_id": "straight",
+      "elevation_level": 0,
+      "rotation": 1
+    },
+    {
+      "cell_x": 0,
+      "cell_y": 23,
+      "def_id": "straight",
+      "elevation_level": 0,
+      "rotation": 1
+    },
+    {
+      "cell_x": 4,
+      "cell_y": 20,
+      "def_id": "banked_exit",
+      "elevation_level": 0,
+      "rotation": 0
+    },
+    {
+      "cell_x": 4,
+      "cell_y": 19,
+      "def_id": "pipe_entry",
+      "elevation_level": 0,
+      "rotation": 0
+    },
+    {
+      "cell_x": -4,
+      "cell_y": 2,
+      "def_id": "banked_exit",
+      "elevation_level": 0,
+      "rotation": 2
+    },
+    {
+      "cell_x": -1,
+      "cell_y": -1,
+      "def_id": "banked_entry",
+      "elevation_level": 0,
+      "rotation": 3
+    },
+    {
+      "cell_x": -9,
+      "cell_y": 24,
+      "def_id": "corkscrew",
+      "elevation_level": 0,
+      "rotation": 0
+    },
+    {
+      "cell_x": -8,
+      "cell_y": 15,
+      "def_id": "straight",
+      "elevation_level": 0,
+      "rotation": 0
+    },
+    {
+      "cell_x": -8,
+      "cell_y": 14,
+      "def_id": "wide_curve",
+      "elevation_level": 0,
+      "rotation": 0
+    },
+    {
+      "cell_x": -6,
+      "cell_y": 13,
+      "def_id": "straight",
+      "elevation_level": 0,
+      "rotation": 1
+    },
+    {
+      "cell_x": -5,
+      "cell_y": 13,
+      "def_id": "straight",
+      "elevation_level": 0,
+      "rotation": 1
+    },
+    {
+      "cell_x": -4,
+      "cell_y": 13,
+      "def_id": "straight",
+      "elevation_level": 0,
+      "rotation": 1
+    },
+    {
+      "cell_x": -3,
+      "cell_y": 13,
+      "def_id": "curve",
+      "elevation_level": 0,
+      "rotation": 3
+    },
+    {
+      "cell_x": -3,
+      "cell_y": 12,
+      "def_id": "straight",
+      "elevation_level": 0,
+      "rotation": 0
+    },
+    {
+      "cell_x": -2,
+      "cell_y": 23,
+      "def_id": "straight",
+      "elevation_level": 0,
+      "rotation": 1
+    },
+    {
+      "cell_x": -3,
+      "cell_y": 23,
+      "def_id": "straight",
+      "elevation_level": 0,
+      "rotation": 1
+    },
+    {
+      "cell_x": -5,
+      "cell_y": 24,
+      "def_id": "wide_curve",
+      "elevation_level": 0,
+      "rotation": 0
+    },
+    {
+      "cell_x": -5,
+      "cell_y": 25,
+      "def_id": "wide_curve",
+      "elevation_level": 0,
+      "rotation": 2
+    },
+    {
+      "cell_x": -7,
+      "cell_y": 26,
+      "def_id": "wide_curve",
+      "elevation_level": 0,
+      "rotation": 3
+    }
+  ],
+  "metadata": {},
+  "name": "fast",
+  "props": [],
+  "start_cell": [
+    -4,
+    4
+  ],
+  "terrain": {
+    "edits": [],
+    "lakes": [],
+    "seed": 0,
+    "type": 4
+  },
+  "version": 1
+}

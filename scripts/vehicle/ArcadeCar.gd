@@ -297,7 +297,7 @@ func _update_suspension() -> void:
 	var natural_length: float = profile.suspension_rest + profile.wheel_radius
 	var ground_reach: float = natural_length + GROUND_MARGIN
 	# Stiffness/damping scale with mass, so EVERY car rides at the same height.
-	# Without this a heavy car (Bulwark, 2400 kg) compresses the fixed spring twice
+	# Without this a heavy car (a ~1900 kg truck) compresses the fixed spring twice
 	# as far as a light one and sits so low its collision box drags through terrain.
 	var mass_ratio: float = mass / REFERENCE_MASS
 

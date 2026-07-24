@@ -1,8 +1,9 @@
 class_name CarRoster
 extends RefCounted
-## Builds the full car roster (SPEC.md §M6): the four hand-tuned procedural cars
-## plus the imported Kenney Car Kit models (CC0). The Kenney profiles are built
-## in code, pointing at the imported .glb as their visual `model_scene`.
+## Builds the full car roster (SPEC.md §M6) from two CC0 / public-domain model
+## packs: the Rgsdev low-poly vehicles and the Kenney Car Kit. Every profile is
+## built in code, pointing at the imported model as its visual `model_scene`. All
+## assets are safe to redistribute — see CREDITS.md.
 
 const KENNEY := "res://assets/models/kenney/%s.glb"
 
@@ -30,53 +31,17 @@ const KENNEY_DEFS := [
 ]
 
 
-const CARS := "res://assets/models/cars/%s.glb"
-
-# The four hero cars, using the imported models under invented names.
-#
-# WARNING (SPEC.md §2): these .glb files are user-supplied 1:1 replicas of real
-# production cars, kept here as PLACEHOLDERS to reshape into original silhouettes.
-# The names below are invented, but a rename does not make the geometry original —
-# the shape is the trade dress. Their licence is also unknown. Do not ship these
-# meshes as-is; replace them with reworked bodies before any public release.
-#
-# `fit` is the target WIDTH in meters — CarBody auto-fits from the model's own
-# bounds, so re-exporting at a different scale needs no change here. `yaw` turns
-# the model's front onto our -Z forward: the first four models face +Z (PI), the
-# later batch faces -X (-PI/2). Sizes are ~0.55x real-world, matching the fleet.
-#
-# Fitted on width, not length, to match the Kenney fleet's on-track bulk: these
-# models are realistically proportioned while the Kenney cars are stubby, so
-# equal lengths left these looking shrunken. Widths keep the real vehicles'
-# relative proportions (the brute widest, the kart narrowest); length then
-# follows from each model.
-# [glb, display, tagline, fit, yaw, mass, engine, max, grip, steer_low, steer_high, handbrake, color]
-const MODEL_DEFS := [
-	["kensei", "Kensei GT", "Sleek grand-tourer, planted and quick", 1.03, PI, 1300, 18000, 66, 0.14, 2.4, 1.1, 0.25, Color(0.66, 0.70, 0.74)],
-	["onito", "Onito S", "Light drift coupe, happy sideways", 0.92, PI, 1050, 15000, 56, 0.10, 2.7, 1.3, 0.15, Color(0.90, 0.92, 0.95)],
-	["bruiser", "Bruiser V8", "Heavy muscle, big top end, loose tail", 1.04, PI, 1550, 21000, 65, 0.10, 2.0, 0.9, 0.30, Color(0.90, 0.42, 0.10)],
-	# NOTE: "draco" (a wedge supercar) is withdrawn — the model had defects that were
-	# not worth chasing. Its .glb and textures are still in assets/models/cars but
-	# nothing loads them; delete them whenever. Nocturne P1 is now the fast one.
-	["nocturne", "Nocturne P1", "Endurance prototype, relentless pace", 1.08, PI, 1000, 19000, 76, 0.16, 2.5, 1.15, 0.20, Color(0.10, 0.30, 0.70)],
-	["scarab", "Scarab", "Off-road buggy, skips over anything", 1.05, -PI / 2.0, 1100, 16000, 52, 0.16, 2.8, 1.3, 0.25, Color(0.95, 0.55, 0.10)],
-	["gnat", "Gnat", "Featherweight kart, absurd cornering", 0.78, -PI / 2.0, 400, 9000, 42, 0.18, 3.2, 1.6, 0.20, Color(0.85, 0.20, 0.45)],
-	["bulwark", "Bulwark", "Armoured brute, unstoppable and slow", 1.45, -PI / 2.0, 2400, 22000, 48, 0.12, 1.8, 0.8, 0.35, Color(0.35, 0.40, 0.28)],
-]
-
-
 const RGSDEV := "res://assets/models/rgsdev/%s.fbx"
 
 # Low-poly vehicle pack by Raphael Gonçalves (Rgsdev), CC0 / public domain — free
-# for any use, commercial included, no credit required. Unlike MODEL_DEFS these are
-# generic invented vehicle types with no real-marque geometry or badges, so they are
-# safe to ship as-is (SPEC.md §2).
+# for any use, commercial included, no credit required. Generic invented vehicle
+# types with no real-marque geometry or badges, so they are safe to ship (SPEC.md §2).
 #
 # Every model in the pack faces +Z with its wheels named front/rear, so all of them
-# take yaw PI to meet our -Z forward. `fit` is the target WIDTH in meters, as with
-# MODEL_DEFS; the colour mirrors each model's own baked paint so the minimap dot
-# matches the car you see. Vehicles whose length far outran the chassis (bus,
-# firetruck, limousine, artic) are deliberately left out of the import.
+# take yaw PI to meet our -Z forward. `fit` is the target WIDTH in meters; the colour
+# mirrors each model's own baked paint so the minimap dot matches the car you see.
+# Vehicles whose length far outran the chassis (bus, firetruck, limousine, artic)
+# are deliberately left out of the import.
 # [file, display, tagline, fit, yaw, mass, engine, max, grip, steer_low, steer_high, handbrake, color]
 const RGSDEV_DEFS := [
 	["sports", "Vega S", "Crisp mid-engine coupe, eager to turn", 0.95, PI, 1050, 17000, 68, 0.15, 2.6, 1.2, 0.20, Color(0.78, 0.15, 0.11)],
@@ -102,10 +67,8 @@ const RGSDEV_DEFS := [
 static func build() -> Array[CarProfile]:
 	var roster: Array[CarProfile] = []
 	var curve := _falloff_curve()
-	for d in MODEL_DEFS:
-		roster.append(_hero(d, curve))
 	for d in RGSDEV_DEFS:
-		roster.append(_hero(d, curve, RGSDEV))
+		roster.append(_model_car(d, curve, RGSDEV))
 	for d in KENNEY_DEFS:
 		roster.append(_kenney(d, curve))
 	return roster
@@ -113,9 +76,8 @@ static func build() -> Array[CarProfile]:
 
 ## Build a width-fitted model car from a [file, display, tagline, fit, yaw, mass,
 ## engine, max, grip, steer_low, steer_high, handbrake, color] row. `path_fmt` is
-## the asset-path format for the model, so the same row shape serves both the
-## res://assets/models/cars .glb set and the Rgsdev .fbx pack.
-static func _hero(d: Array, curve: Curve, path_fmt: String = CARS) -> CarProfile:
+## the asset-path format for the model.
+static func _model_car(d: Array, curve: Curve, path_fmt: String) -> CarProfile:
 	var p := _base_profile(curve)
 	p.display_name = d[1]
 	p.tagline = d[2]

@@ -668,13 +668,6 @@
     },
     {
       "cell_x": -39,
-      "cell_y": 17,
-      "def_id": "banked_exit",
-      "elevation_level": 0,
-      "rotation": 0
-    },
-    {
-      "cell_x": -39,
       "cell_y": 18,
       "def_id": "banked_straight",
       "elevation_level": 0,
@@ -1851,22 +1844,8 @@
     },
     {
       "cell_x": -55,
-      "cell_y": 35,
-      "def_id": "overpass",
-      "elevation_level": 0,
-      "rotation": 2
-    },
-    {
-      "cell_x": -55,
       "cell_y": 36,
       "def_id": "overpass",
-      "elevation_level": 0,
-      "rotation": 2
-    },
-    {
-      "cell_x": -55,
-      "cell_y": 42,
-      "def_id": "wide_curve",
       "elevation_level": 0,
       "rotation": 2
     },
@@ -1885,25 +1864,193 @@
       "rotation": 2
     },
     {
-      "cell_x": -58,
-      "cell_y": 43,
-      "def_id": "straight",
-      "elevation_level": 0,
-      "rotation": 3
-    },
-    {
-      "cell_x": -57,
-      "cell_y": 43,
-      "def_id": "straight",
-      "elevation_level": 0,
-      "rotation": 3
-    },
-    {
       "cell_x": -59,
       "cell_y": 43,
       "def_id": "straight",
       "elevation_level": 0,
       "rotation": 3
+    },
+    {
+      "cell_x": -54,
+      "cell_y": 42,
+      "def_id": "curve",
+      "elevation_level": 0,
+      "rotation": 2
+    },
+    {
+      "cell_x": -55,
+      "cell_y": 42,
+      "def_id": "curve",
+      "elevation_level": 0,
+      "rotation": 0
+    },
+    {
+      "cell_x": -58,
+      "cell_y": 43,
+      "def_id": "curve",
+      "elevation_level": 0,
+      "rotation": 3
+    },
+    {
+      "cell_x": -54,
+      "cell_y": 43,
+      "def_id": "curve",
+      "elevation_level": 0,
+      "rotation": 0
+    },
+    {
+      "cell_x": -54,
+      "cell_y": 35,
+      "def_id": "straight",
+      "elevation_level": 0,
+      "rotation": 1
+    },
+    {
+      "cell_x": -53,
+      "cell_y": 35,
+      "def_id": "straight",
+      "elevation_level": 0,
+      "rotation": 1
+    },
+    {
+      "cell_x": -52,
+      "cell_y": 35,
+      "def_id": "straight",
+      "elevation_level": 0,
+      "rotation": 1
+    },
+    {
+      "cell_x": -55,
+      "cell_y": 35,
+      "def_id": "overpass",
+      "elevation_level": 0,
+      "rotation": 2
+    },
+    {
+      "cell_x": -56,
+      "cell_y": 35,
+      "def_id": "straight",
+      "elevation_level": 0,
+      "rotation": 3
+    },
+    {
+      "cell_x": -58,
+      "cell_y": 42,
+      "def_id": "straight",
+      "elevation_level": 0,
+      "rotation": 0
+    },
+    {
+      "cell_x": -58,
+      "cell_y": 41,
+      "def_id": "straight",
+      "elevation_level": 0,
+      "rotation": 0
+    },
+    {
+      "cell_x": -58,
+      "cell_y": 40,
+      "def_id": "straight",
+      "elevation_level": 0,
+      "rotation": 0
+    },
+    {
+      "cell_x": -58,
+      "cell_y": 39,
+      "def_id": "straight",
+      "elevation_level": 0,
+      "rotation": 0
+    },
+    {
+      "cell_x": -58,
+      "cell_y": 38,
+      "def_id": "straight",
+      "elevation_level": 0,
+      "rotation": 0
+    },
+    {
+      "cell_x": -58,
+      "cell_y": 36,
+      "def_id": "wide_curve",
+      "elevation_level": 0,
+      "rotation": 0
+    },
+    {
+      "cell_x": -58,
+      "cell_y": 37,
+      "def_id": "straight",
+      "elevation_level": 0,
+      "rotation": 0
+    },
+    {
+      "cell_x": -51,
+      "cell_y": 35,
+      "def_id": "wide_curve",
+      "elevation_level": 0,
+      "rotation": 1
+    },
+    {
+      "cell_x": -50,
+      "cell_y": 42,
+      "def_id": "wide_curve",
+      "elevation_level": 0,
+      "rotation": 2
+    },
+    {
+      "cell_x": -53,
+      "cell_y": 43,
+      "def_id": "straight",
+      "elevation_level": 0,
+      "rotation": 3
+    },
+    {
+      "cell_x": -52,
+      "cell_y": 43,
+      "def_id": "straight",
+      "elevation_level": 0,
+      "rotation": 3
+    },
+    {
+      "cell_x": -50,
+      "cell_y": 41,
+      "def_id": "straight",
+      "elevation_level": 0,
+      "rotation": 0
+    },
+    {
+      "cell_x": -50,
+      "cell_y": 40,
+      "def_id": "straight",
+      "elevation_level": 0,
+      "rotation": 2
+    },
+    {
+      "cell_x": -50,
+      "cell_y": 39,
+      "def_id": "straight",
+      "elevation_level": 0,
+      "rotation": 2
+    },
+    {
+      "cell_x": -50,
+      "cell_y": 38,
+      "def_id": "straight",
+      "elevation_level": 0,
+      "rotation": 2
+    },
+    {
+      "cell_x": -50,
+      "cell_y": 37,
+      "def_id": "straight",
+      "elevation_level": 0,
+      "rotation": 2
+    },
+    {
+      "cell_x": -39,
+      "cell_y": 17,
+      "def_id": "banked_exit",
+      "elevation_level": 0,
+      "rotation": 0
     }
   ],
   "metadata": {},

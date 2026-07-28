@@ -41,11 +41,15 @@ func _ready() -> void:
 			var target: float = profile.model_fit_width if by_width else profile.model_fit_length
 			_fit_model(holder, model, target, by_width, profile.model_yaw)
 			_seat_model(holder)
+			if profile.roof_beacon:
+				_add_beacon(holder)
 		else:
 			model.scale = Vector3.ONE * profile.model_scale
 			model.position = Vector3(0.0, profile.model_y_offset, 0.0)
 			model.rotation = Vector3(0.0, profile.model_yaw, 0.0)
 			add_child(model)
+			if profile.roof_beacon:
+				_add_beacon(model)
 		return
 
 	scale = Vector3(0.6, 0.6, 0.6)  # procedural bodies are authored at full size
@@ -99,6 +103,22 @@ func _seat_model(holder: Node3D) -> void:
 			lo = minf(lo, (local * v).y)
 	if lo < 1e8:
 		holder.position.y += MODEL_GROUND - lo
+
+
+## Mount a revolving police beacon centred on the roof of the just-added visual.
+## Measures the model's real bounds in CarBody space, so it sits on top of whatever
+## car it is (fitted or scaled) rather than at a guessed height.
+func _add_beacon(visual_root: Node3D) -> void:
+	var box: AABB = _vertex_bounds(visual_root, visual_root.transform)
+	if box.size == Vector3.ZERO:
+		return
+	var beacon := PoliceBeacon.new()
+	# Sit the glow right down on the roof line (a touch into it), not floating above.
+	beacon.position = Vector3(
+		0.0,
+		box.position.y + box.size.y - 0.06,
+		box.position.z + box.size.z * 0.5)
+	add_child(beacon)
 
 
 func _mesh_descendants(n: Node) -> Array[MeshInstance3D]:

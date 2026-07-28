@@ -42,6 +42,9 @@ static func for_replay(info: Dictionary) -> CarProfile:
 ## Which procedural silhouette CarBody builds: coupe / gt / drift / muscle / super.
 @export var body_style: String = "coupe"
 
+## When true, CarBody mounts a revolving red/blue beacon on the roof — the police cars.
+@export var roof_beacon: bool = false
+
 # --- Optional imported model (M6). If set, this scene is used as the car's
 # visual instead of the procedural CarBody. ---
 

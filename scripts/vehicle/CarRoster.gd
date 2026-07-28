@@ -92,6 +92,7 @@ static func _model_car(d: Array, curve: Curve, path_fmt: String) -> CarProfile:
 	p.steer_speed_high = float(d[10])
 	p.handbrake_grip_mult = float(d[11])
 	p.body_color = d[12]
+	p.roof_beacon = String(d[0]).begins_with("police")
 	return p
 
 
@@ -130,6 +131,7 @@ static func _kenney(d: Array, curve: Curve) -> CarProfile:
 	p.model_scale = MODEL_SCALE
 	p.model_y_offset = MODEL_Y_OFFSET
 	p.model_yaw = MODEL_YAW
+	p.roof_beacon = String(d[0]).begins_with("police")
 
 	p.mass = float(d[3])
 	p.engine_force = float(d[4])

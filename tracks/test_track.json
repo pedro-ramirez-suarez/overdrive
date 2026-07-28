@@ -276,20 +276,6 @@
     },
     {
       "cell_x": -63,
-      "cell_y": -3,
-      "def_id": "straight",
-      "elevation_level": 0,
-      "rotation": 0
-    },
-    {
-      "cell_x": -63,
-      "cell_y": -4,
-      "def_id": "straight",
-      "elevation_level": 0,
-      "rotation": 0
-    },
-    {
-      "cell_x": -63,
       "cell_y": -5,
       "def_id": "straight",
       "elevation_level": 0,
@@ -1577,13 +1563,6 @@
       "rotation": 0
     },
     {
-      "cell_x": -16,
-      "cell_y": -45,
-      "def_id": "straight",
-      "elevation_level": 0,
-      "rotation": 0
-    },
-    {
       "cell_x": -17,
       "cell_y": -45,
       "def_id": "ramp_down",
@@ -2051,6 +2030,13 @@
       "def_id": "banked_exit",
       "elevation_level": 0,
       "rotation": 0
+    },
+    {
+      "cell_x": -63,
+      "cell_y": -4,
+      "def_id": "jump",
+      "elevation_level": 0,
+      "rotation": 2
     }
   ],
   "metadata": {},
@@ -2058,9 +2044,9 @@
   "props": [
     {
       "cell_x": -63,
-      "cell_y": -2,
+      "cell_y": -3,
       "kind": 1,
-      "rotation": 0,
+      "rotation": 2,
       "variant": 0
     }
   ],

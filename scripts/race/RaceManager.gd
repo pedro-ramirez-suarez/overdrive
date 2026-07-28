@@ -951,12 +951,32 @@ func _racer_for_body(body: Node) -> Racer:
 	return null
 
 
+## Beyond this, two consecutive waypoints aren't a step along the road: they're the
+## fabricated closing segment of a track that never actually loops back to its start
+## (RacePath falls back to an open path, and the race wraps it into a fake circuit).
+## Set well above any real tile's span — even a 9-cell corkscrew is only ~72 m — so
+## only that phantom leap trips it, not a legitimately long tile.
+const GAP_DIST := Constants.CELL_SIZE * 20.0
+
+
 func _forward_at(index: int) -> Vector3:
-	if _waypoints.size() < 2:
+	var n: int = _waypoints.size()
+	if n < 2:
 		return Vector3.FORWARD
-	var next_index: int = (index + 1) % _waypoints.size()
+	var next_index: int = (index + 1) % n
 	var dir: Vector3 = _waypoints[next_index] - _waypoints[index]
 	dir.y = 0.0
+	# If the next waypoint is a gap away, the straight line to it doesn't point along
+	# the local road (it cuts across the map). Take the heading from the segment
+	# ARRIVING at this waypoint instead — that always runs with the road. This is what
+	# keeps the start of a REVERSED lap facing the right way on a track whose finish
+	# connector is unwaypointed: there, waypoint 0's "next" is the far pre-finish cell.
+	if dir.length() > GAP_DIST:
+		var prev_index: int = (index - 1 + n) % n
+		var back: Vector3 = _waypoints[index] - _waypoints[prev_index]
+		back.y = 0.0
+		if back.length_squared() > 0.0001:
+			dir = back
 	if dir.length_squared() < 0.0001:
 		return Vector3.FORWARD
 	return dir.normalized()

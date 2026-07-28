@@ -105,16 +105,55 @@ func _setup_panel() -> Control:
 	return panel
 
 
-## Toggle for racing the circuit backwards (the "wrong way" round).
+## Toggle for racing the circuit backwards (the "wrong way" round). A hand-drawn
+## high-contrast checkbox: a native CheckBox/CheckButton either vanished into the
+## dark panel (switch pill) or picked up the theme's button box and read as a label.
+## This is a plain toggle button with NO box of its own, its icon a big square that
+## is hollow-with-a-muted-border when off and filled solid accent-red when on — so
+## the state is unmistakable.
 func _reverse_toggle() -> Control:
 	var row := _labelled_row("Direction")
-	var check := CheckButton.new()
+	var off_icon := _square_icon(false)
+	var on_icon := _square_icon(true)
+
+	var check := Button.new()
+	check.toggle_mode = true
 	check.text = "Reverse (wrong way)"
 	check.button_pressed = GameState.race_reversed
+	check.icon = on_icon if check.button_pressed else off_icon
+	check.alignment = HORIZONTAL_ALIGNMENT_LEFT
 	check.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	check.toggled.connect(func(on: bool) -> void: GameState.race_reversed = on)
+	check.add_theme_font_size_override("font_size", 18)
+	check.add_theme_constant_override("h_separation", 12)
+	check.add_theme_constant_override("icon_max_width", 26)
+	check.add_theme_color_override("font_color", MenuUI.TEXT)
+	check.add_theme_color_override("font_pressed_color", MenuUI.TEXT)
+	check.add_theme_color_override("font_hover_color", Color.WHITE)
+	check.add_theme_color_override("font_hover_pressed_color", Color.WHITE)
+	# Strip the themed button box on every state, so only the square + label show.
+	for state in ["normal", "hover", "pressed", "focus"]:
+		check.add_theme_stylebox_override(state, StyleBoxEmpty.new())
+	check.toggled.connect(func(on: bool) -> void:
+		GameState.race_reversed = on
+		check.icon = on_icon if on else off_icon)
 	row.add_child(check)
 	return row
+
+
+## A checkbox-indicator square, drawn to a texture so it stays crisp and high-
+## contrast on the dark panel: a muted border round a faint interior when empty, a
+## solid accent fill with a bright border when ticked.
+func _square_icon(filled: bool) -> ImageTexture:
+	var n := 32
+	var border := 3
+	var img := Image.create(n, n, false, Image.FORMAT_RGBA8)
+	var interior: Color = MenuUI.ACCENT if filled else Color(0.0, 0.0, 0.0, 0.30)
+	var edge: Color = Color(1.0, 0.72, 0.72) if filled else MenuUI.MUTED
+	for y in range(n):
+		for x in range(n):
+			var on_edge: bool = x < border or x >= n - border or y < border or y >= n - border
+			img.set_pixel(x, y, edge if on_edge else interior)
+	return ImageTexture.create_from_image(img)
 
 
 ## A big, obvious "− value +" stepper: a captioned value flanked by round buttons.

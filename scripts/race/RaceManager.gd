@@ -438,7 +438,10 @@ func _check_respawns(delta: float) -> void:
 			continue
 		var car := r.car
 		var upright: float = car.global_transform.basis.y.dot(Vector3.UP)
-		var slow: bool = car.linear_velocity.length() < 2.0
+		# "Settled" is generous on purpose: a car stranded on its roof often still
+		# creeps or rocks a little (a slope, or throttle it can't use), so a tight
+		# near-zero test would keep re-arming and never rescue it.
+		var settled: bool = car.linear_velocity.length() < 4.0
 		# A car sitting on its wheels is never "flipped", however upside-down it is in
 		# WORLD space: on a loop or corkscrew crest it is inverted yet perfectly seated,
 		# its up-axis aligned with the road it rides. Measuring flip against world-up
@@ -469,10 +472,15 @@ func _check_respawns(delta: float) -> void:
 				r.lake_time = 0.0
 			if r.lake_time > 1.0:
 				_respawn(r, "lake y=%.1f" % car.global_position.y)
-		elif upright < 0.2 and slow and not seated:
+		elif not r.is_player and upright < 0.2 and settled and not seated:
+			# An AI car wheels-up (or on its side) and not riding a loop/corkscrew
+			# surface is genuinely flipped — it can't press Reset, so right it after a
+			# beat. The player is left to reset a flip themselves with R: a flipped car
+			# is still on the track and recoverable, so auto-righting it would just take
+			# control away (unlike falling off the world or drowning, which do reset).
 			r.lake_time = 0.0
 			r.stuck_time += delta
-			if r.stuck_time > 2.5:
+			if r.stuck_time > 1.5:
 				_respawn(r, "flipped upright=%.2f" % upright)
 		else:
 			r.lake_time = 0.0

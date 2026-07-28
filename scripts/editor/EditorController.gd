@@ -332,6 +332,10 @@ func _build_ui() -> void:
 	save_btn.pressed.connect(_save_track)
 	actions.add_child(save_btn)
 
+	var export_btn := _icon_button("export", "Export to a file (choose name and location)")
+	export_btn.pressed.connect(_open_export_dialog)
+	actions.add_child(export_btn)
+
 	var menu_btn := _icon_button("menu", "Main Menu")
 	menu_btn.pressed.connect(func() -> void:
 		GameState.current_grid = _grid
@@ -1096,6 +1100,42 @@ func _do_save(track_name: String, path: String) -> void:
 		_flash("Saved: %s" % path)
 	else:
 		_flash("Save failed.")
+
+
+# --- Export -----------------------------------------------------------------
+
+## "Save As...": pick any name and location on disk to write the track to. Unlike
+## Save (which goes to the user library) this is for handing a track file to
+## someone else, so it opens the native file browser on the whole filesystem.
+func _open_export_dialog() -> void:
+	var track_name: String = _name_edit.text.strip_edges()
+	if track_name == "":
+		track_name = "Untitled"
+	var dlg := FileDialog.new()
+	dlg.file_mode = FileDialog.FILE_MODE_SAVE_FILE
+	dlg.access = FileDialog.ACCESS_FILESYSTEM
+	dlg.filters = PackedStringArray(["*.json ; Track files"])
+	dlg.title = "Export track"
+	dlg.use_native_dialog = true
+	dlg.current_file = "%s.json" % track_name.to_lower().replace(" ", "_")
+	dlg.current_dir = OS.get_system_dir(OS.SYSTEM_DIR_DOCUMENTS)
+	dlg.file_selected.connect(_export_track_file)
+	dlg.close_requested.connect(dlg.queue_free)
+	dlg.file_selected.connect(func(_p: String) -> void: dlg.queue_free())
+	add_child(dlg)
+	dlg.popup_centered_ratio(0.7)
+
+
+func _export_track_file(path: String) -> void:
+	if not path.to_lower().ends_with(".json"):
+		path += ".json"
+	var track_name: String = _name_edit.text.strip_edges()
+	if track_name == "":
+		track_name = "Untitled"
+	if TrackSerializer.save(_grid, _library, path, track_name, "player"):
+		_flash("Exported: %s" % path)
+	else:
+		_flash("Export failed.")
 
 
 # --- Load / import ----------------------------------------------------------

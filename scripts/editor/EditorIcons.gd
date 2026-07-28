@@ -259,6 +259,14 @@ static func _glyph(id: String) -> Array:
 				_seg(0.14, 0.66, 0.14, 0.88, 0.1),
 				_seg(0.86, 0.66, 0.86, 0.88, 0.1),
 				_seg(0.14, 0.88, 0.86, 0.88, 0.1)]
+		"export":
+			# Out to a file: an arrow rising up out of a tray (the inverse of import).
+			return [_seg(0.5, 0.56, 0.5, 0.12, 0.12, ACCENT),
+				_seg(0.32, 0.3, 0.5, 0.12, 0.12, ACCENT),
+				_seg(0.68, 0.3, 0.5, 0.12, 0.12, ACCENT),
+				_seg(0.14, 0.5, 0.14, 0.88, 0.1),
+				_seg(0.86, 0.5, 0.86, 0.88, 0.1),
+				_seg(0.14, 0.88, 0.86, 0.88, 0.1)]
 		"play":
 			return [_poly([Vector2(0.28, 0.16), Vector2(0.86, 0.5), Vector2(0.28, 0.84)])]
 		"plus":

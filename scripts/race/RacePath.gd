@@ -146,12 +146,28 @@ static func jump_landing(grid: TrackGrid, anchor: Vector2i) -> Vector2i:
 		var a: Vector2i = grid.get_anchor(c)
 		if a == TrackGrid.NONE or a == anchor:
 			continue
-		# The first tile beyond the lip must face back at the ramp to be a landing.
+		# The first tile beyond the lip is the landing. Two shapes qualify:
 		var lp: PlacedTile = grid.tiles[a]
 		var ld: TileDefinition = grid.get_def(a)
 		if lp == null or ld == null:
 			return NONE
-		var s2: Dictionary = TrackGrid.effective_socket(
-			ld, lp.rotation, lp.elevation_level, a, c, TrackGrid.opposite(launch))
-		return a if s2.get("has_road", false) else NONE
+		# 1. A road tile that presents road on the side facing back at the ramp — you
+		#    come down onto its road (a straight, a down-ramp, etc.).
+		if TrackGrid.effective_socket(ld, lp.rotation, lp.elevation_level, a, c,
+				TrackGrid.opposite(launch)).get("has_road", false):
+			return a
+		# 2. Another launch ramp whose lip faces back at us — its single road socket is
+		#    on the FAR side, so it launches toward us. This is two ramps pointing at
+		#    each other across a gap (a jump over an obstacle, e.g. a house). Because
+		#    the test is symmetric, the pair connects in BOTH directions, so a reversed
+		#    lap can take the very same jump.
+		var land_roads := 0
+		var land_dir := -1
+		for d in 4:
+			if TrackGrid.effective_socket(ld, lp.rotation, lp.elevation_level, a, c, d).get("has_road", false):
+				land_roads += 1
+				land_dir = d
+		if land_roads == 1 and land_dir == launch:
+			return a
+		return NONE
 	return NONE

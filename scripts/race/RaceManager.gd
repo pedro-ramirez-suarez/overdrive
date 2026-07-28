@@ -33,6 +33,18 @@ var _ai: Array[AIController] = []
 var _player: Racer
 var _player_position: int = 1
 var _recorder: ReplayRecorder = ReplayRecorder.new()
+## Sticky cursor: which route waypoint the player is currently at. Only ever moved
+## a few steps at a time (see _track_player_progress), so on a track that passes
+## near itself it can't snap to a horizontally-closer waypoint elsewhere on the lap.
+var _player_wp: int = 0
+## Distance (meters) from the car to its cursor waypoint. When the cursor is stranded
+## — e.g. on a return stretch that has no waypoints of its own and passes near an
+## unrelated leg — this grows huge, and the wrong-way check ignores the reading rather
+## than trust a "forward" direction from a waypoint the car isn't actually near.
+var _player_wp_dist: float = 0.0
+## How long the wrong-way condition has held; the warning only shows after a beat,
+## so a slope or a bump can't flash it.
+var _wrongway_time: float = 0.0
 
 ## Cumulative route length up to each waypoint, and the total, in meters — used to
 ## turn positions into an along-route distance for live time gaps and medals.
@@ -260,19 +272,7 @@ func _spawn_ghost() -> void:
 		return
 	var info: Dictionary = _ghost_replay.car_infos[0]
 	_ghost_car = load(CAR_SCENE).instantiate()
-	var model_path: String = info.get("model_path", "")
-	if model_path != "":
-		# Prefer the live roster profile (correct auto-fit); fall back to a stub.
-		var prof: CarProfile = GameState.profile_for_model(model_path)
-		if prof == null:
-			prof = CarProfile.new()
-			prof.model_scene = load(model_path)
-			prof.model_scale = info.get("model_scale", 1.0)
-			prof.model_y_offset = info.get("model_y_offset", 0.0)
-			prof.model_yaw = info.get("model_yaw", 0.0)
-			prof.model_fit_width = info.get("model_fit_width", 0.0)
-			prof.model_fit_length = info.get("model_fit_length", 0.0)
-		_ghost_car.profile = prof
+	_ghost_car.profile = CarProfile.for_replay(info)
 	add_child(_ghost_car)
 	# Turn it into a visual-only prop: no physics, no collision, faded and tinted so
 	# it reads plainly as a ghost of a past run rather than a live rival.
@@ -281,8 +281,6 @@ func _spawn_ghost() -> void:
 	_ghost_car.freeze_mode = RigidBody3D.FREEZE_MODE_KINEMATIC
 	_ghost_car.collision_layer = 0
 	_ghost_car.collision_mask = 0
-	if model_path == "":
-		_ghost_car.get_node("Visual").set("body_color", Color(0.55, 0.85, 1.0))
 	_make_ghostly(_ghost_car)
 	_ghost_car.global_transform = _ghost_replay.sample(0, 0.0)
 	_ghost_car.visible = false
@@ -321,13 +319,14 @@ func _process(delta: float) -> void:
 				_start_race()
 		Phase.RACING:
 			_race_time += delta
+			_track_player_progress()
 			_update_offroute_penalty()
 			_update_rubberband()
 			_check_respawns(delta)
 			_update_ranks()
 			_update_ghost()
 			_update_hud()
-			_update_wrong_way()
+			_update_wrong_way(delta)
 		Phase.FINISHED:
 			pass
 
@@ -384,6 +383,7 @@ func _on_checkpoint_passed(index: int, body: Node3D) -> void:
 	if index == r.expected_next:
 		r.cp_this_lap += 1
 		r.expected_next = (index + 1) % _path.size()
+		r.last_checkpoint_index = index
 		r.last_checkpoint_pos = _waypoints[index] + Vector3(0, 1.4, 0)
 		r.last_checkpoint_forward = _forward_at(index)
 
@@ -439,6 +439,12 @@ func _check_respawns(delta: float) -> void:
 		var car := r.car
 		var upright: float = car.global_transform.basis.y.dot(Vector3.UP)
 		var slow: bool = car.linear_velocity.length() < 2.0
+		# A car sitting on its wheels is never "flipped", however upside-down it is in
+		# WORLD space: on a loop or corkscrew crest it is inverted yet perfectly seated,
+		# its up-axis aligned with the road it rides. Measuring flip against world-up
+		# alone made a car that lost momentum there trip a bogus rescue every lap. Only
+		# rescue when it is NOT seated on a surface (on its roof, off the track).
+		var seated: bool = car.grounded and car.global_transform.basis.y.dot(car.surface_normal) > 0.3
 		# Drowning is per-cell: a lake can sit on a plateau, so there is no single
 		# water height to test against any more. Cars on the track are exempt — a
 		# road may legitimately bridge a lake, and it clears the water by inches.
@@ -449,13 +455,27 @@ func _check_respawns(delta: float) -> void:
 				roundi(car.global_position.z / Constants.CELL_SIZE))
 			if terrain.is_water(cell):
 				in_lake = car.global_position.y < terrain.water_surface(cell) + 0.6
-		if car.global_position.y < -8.0 or in_lake:
-			_respawn(r)
-		elif upright < 0.2 and slow:
+		if car.global_position.y < -8.0:
+			# Off the world entirely — nothing to recover, reset at once.
+			_respawn(r, "fell y=%.1f" % car.global_position.y)
+		elif in_lake:
+			# Submerged and off the road, but a car blasting across a low causeway
+			# reads that for only a fraction of a second while grounded on solid road
+			# at speed. Only a car that has actually bogged down in the water (slow,
+			# for a beat) is drowning — so a healthy crossing is never reset.
+			if car.linear_velocity.length() < 6.0:
+				r.lake_time += delta
+			else:
+				r.lake_time = 0.0
+			if r.lake_time > 1.0:
+				_respawn(r, "lake y=%.1f" % car.global_position.y)
+		elif upright < 0.2 and slow and not seated:
+			r.lake_time = 0.0
 			r.stuck_time += delta
 			if r.stuck_time > 2.5:
-				_respawn(r)
+				_respawn(r, "flipped upright=%.2f" % upright)
 		else:
+			r.lake_time = 0.0
 			r.stuck_time = 0.0
 			# An AI car wedged upright (against a wall, scenery, another car) never
 			# trips the flipped check above, so it can sit there forever. If a CPU
@@ -464,15 +484,25 @@ func _check_respawns(delta: float) -> void:
 			if not r.is_player and car.linear_velocity.length() < 1.5:
 				r.slow_time += delta
 				if r.slow_time > 3.0:
-					_respawn(r)
+					_respawn(r, "ai-stuck")
 			else:
 				r.slow_time = 0.0
 
 
-func _respawn(r: Racer) -> void:
+func _respawn(r: Racer, _reason: String = "") -> void:
 	r.stuck_time = 0.0
 	r.slow_time = 0.0
-	r.car.respawn(r.last_checkpoint_pos, r.last_checkpoint_forward)
+	r.lake_time = 0.0
+	# The player respawns from the reliable progress cursor, a few waypoints back for
+	# a run-up — NOT from the last checkpoint, whose in-order bookkeeping stalls (and
+	# drops you far back) when a checkpoint sphere gets skipped mid-jump or mid-loop.
+	# AI cars keep the checkpoint respawn.
+	if r == _player and not _waypoints.is_empty():
+		var idx: int = posmod(_player_wp - RESET_BACKTRACK, _waypoints.size())
+		r.car.respawn(_waypoints[idx] + Vector3(0, 1.4, 0), _forward_at(idx))
+		_player_wp = idx
+	else:
+		r.car.respawn(r.last_checkpoint_pos, r.last_checkpoint_forward)
 
 
 ## How many waypoints back along the racing line R puts you.
@@ -485,17 +515,19 @@ const RESET_BACKTRACK := 3
 
 
 ## R during a race: back onto the racing line, upright, facing the right way, with
-## a short run-up. Keyed off the NEAREST waypoint rather than checkpoint
-## bookkeeping, so it works even if you are flung far off the track — which is
-## exactly when it is wanted.
+## a short run-up. Keyed off the player's sticky progress cursor, so on a track that
+## crosses near itself it puts you just behind where you actually are — not far back
+## on an earlier lap section that happens to be horizontally close.
 func _manual_reset(r: Racer) -> void:
 	if _waypoints.is_empty():
 		r.car.reset_to_safe()
 		return
-	var idx: int = _nearest_waypoint_index(r.car.global_position)
-	idx = posmod(idx - RESET_BACKTRACK, _waypoints.size())
+	var here: int = _player_wp if r == _player else _nearest_waypoint_index(r.car.global_position)
+	var idx: int = posmod(here - RESET_BACKTRACK, _waypoints.size())
 	r.stuck_time = 0.0
 	r.car.respawn(_waypoints[idx] + Vector3(0, 1.4, 0), _forward_at(idx))
+	if r == _player:
+		_player_wp = idx
 
 
 func _nearest_waypoint_index(pos: Vector3) -> int:
@@ -507,6 +539,31 @@ func _nearest_waypoint_index(pos: Vector3) -> int:
 			best_d = d
 			best = i
 	return best
+
+
+## Advance the player's sticky route cursor. Searches only a short window forward
+## (and a little back, for spin-outs) of where it already is, so it follows the lap
+## smoothly and CANNOT jump to a waypoint from a different part of a self-crossing
+## track — the bug that made the wrong-way warning fire and reset land far back when
+## a second set of loops/corkscrews sat near the first.
+func _track_player_progress() -> void:
+	if _player == null or _waypoints.size() < 2:
+		return
+	var pos: Vector3 = _player.car.global_position
+	var n: int = _waypoints.size()
+	var best: int = _player_wp
+	# FULL 3D distance, not horizontal only: a road climbing a hill can pass near
+	# itself in plan view (switchbacks) at different heights, and a flat compare would
+	# confuse the legs. Height tells them apart.
+	var best_d: float = pos.distance_squared_to(_waypoints[_player_wp])
+	for off in range(-4, 13):
+		var i: int = posmod(_player_wp + off, n)
+		var d: float = pos.distance_squared_to(_waypoints[i])
+		if d < best_d:
+			best_d = d
+			best = i
+	_player_wp = best
+	_player_wp_dist = sqrt(best_d)
 
 
 # --- Ranking ----------------------------------------------------------------
@@ -606,7 +663,8 @@ func _progress(r: Racer) -> float:
 func _metric_progress(r: Racer) -> float:
 	if _wp_cum.is_empty():
 		return 0.0
-	var i: int = _nearest_waypoint_index(r.car.global_position)
+	# The player uses its sticky cursor; other cars fall back to a global search.
+	var i: int = _player_wp if r == _player else _nearest_waypoint_index(r.car.global_position)
 	return float(r.lap) * _route_len + _wp_cum[i]
 
 
@@ -635,24 +693,33 @@ func _interval_to_ahead() -> String:
 ## Flash a warning when the player is driving against the route. Compares the car's
 ## travel direction with the route's forward direction at the nearest waypoint; a
 ## strongly-opposed heading at speed lights the warning.
-func _update_wrong_way() -> void:
+func _update_wrong_way(delta: float) -> void:
 	if _wrongway_label == null:
 		return
 	var wrong := false
 	if _player != null and not _player.finished and _waypoints.size() >= 2:
 		var car: ArcadeCar = _player.car
-		# Only meaningful on roughly level ground. On a loop, wall or steep bank the
-		# chassis points up and over, so its horizontal heading momentarily opposes
-		# the route even while you drive the right way round — and airborne there is
-		# no heading at all. Skip the test in those cases to avoid false alarms.
-		if car.grounded and car.surface_normal.dot(Vector3.UP) > 0.6:
+		# Only meaningful when actually ON the road and on roughly level ground:
+		# - off the road (exploring terrain / up a hillside off-track) you're not going
+		#   the "wrong way", you're just off-route, so `on_track` gates it out;
+		# - on a loop, wall or steep bank the chassis points up and over so its
+		#   horizontal heading momentarily opposes the route even when correct, and
+		#   airborne there is no heading — so a level surface is required too.
+		# ...and only when the cursor is actually tracking the car. On a stretch with no
+		# waypoints of its own the cursor strands on an unrelated leg far away, whose
+		# "forward" points some random direction — never accuse the driver of going
+		# backwards off a waypoint they aren't near.
+		var cursor_ok: bool = _player_wp_dist < Constants.CELL_SIZE * 5.0
+		if cursor_ok and car.grounded and car.on_track and car.surface_normal.dot(Vector3.UP) > 0.6:
 			var vel: Vector3 = car.linear_velocity
 			vel.y = 0.0
 			if vel.length() > 4.0:
-				var idx: int = _nearest_waypoint_index(car.global_position)
-				wrong = vel.normalized().dot(_forward_at(idx)) < -0.45
-	# Blink so it reads as an alert rather than static UI.
-	_wrongway_label.visible = wrong and (int(_race_time * 3.0) % 2 == 0)
+				wrong = vel.normalized().dot(_forward_at(_player_wp)) < -0.45
+	# Require the condition to hold for over a second before showing, so a bump, a
+	# slope, or the brief window where the cursor is drifting off a waypoint-less
+	# stretch can't flash it; blink while shown so it reads as an alert.
+	_wrongway_time = (_wrongway_time + delta) if wrong else 0.0
+	_wrongway_label.visible = _wrongway_time > 1.2 and (int(_race_time * 3.0) % 2 == 0)
 
 
 # --- Restart ----------------------------------------------------------------

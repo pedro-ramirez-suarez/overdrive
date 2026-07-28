@@ -20,6 +20,8 @@ var left_finish: bool = false
 
 var last_checkpoint_pos: Vector3 = Vector3.ZERO
 var last_checkpoint_forward: Vector3 = Vector3.FORWARD
+## Waypoint index of the last in-order checkpoint passed — where a respawn lands.
+var last_checkpoint_index: int = 0
 
 var finished: bool = false
 var finish_time: float = 0.0
@@ -28,5 +30,8 @@ var finish_rank: int = 0
 ## Time flipped-and-slow (any racer) and time crawling-while-upright (AI only).
 var stuck_time: float = 0.0
 var slow_time: float = 0.0
+## Time bogged-down-and-slow in a lake — a car crossing a low causeway at speed
+## never accumulates it, so a healthy crossing is never mistaken for drowning.
+var lake_time: float = 0.0
 
 var timer: LapTimer = LapTimer.new()

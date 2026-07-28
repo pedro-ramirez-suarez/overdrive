@@ -6,8 +6,31 @@ extends Resource
 ## `.tres` resource and swapped per vehicle (the M6 roster) — never as magic
 ## literals inside ArcadeCar.gd.
 
-## Invented display name for this car (SPEC.md §2 look-alike guardrail — no real
-## marque names). Used by the M6 car-select screen.
+## Rebuild a car profile from a replay/ghost car-info dict. Prefers the live roster
+## profile (so a still-present car keeps its correct auto-fit); rebuilds a stub if
+## the recorded model still exists on disk; otherwise falls back to a plain
+## procedural body in the recorded colour — so an old recording of a car whose model
+## has since been removed renders a generic ghost instead of erroring on a missing
+## file.
+static func for_replay(info: Dictionary) -> CarProfile:
+	var model_path: String = info.get("model_path", "")
+	var roster_profile: CarProfile = GameState.profile_for_model(model_path)
+	if roster_profile != null:
+		return roster_profile
+	var prof := CarProfile.new()
+	if model_path != "" and ResourceLoader.exists(model_path):
+		prof.model_scene = load(model_path)
+		prof.model_scale = info.get("model_scale", 1.0)
+		prof.model_y_offset = info.get("model_y_offset", 0.0)
+		prof.model_yaw = info.get("model_yaw", 0.0)
+		prof.model_fit_width = info.get("model_fit_width", 0.0)
+		prof.model_fit_length = info.get("model_fit_length", 0.0)
+	else:
+		prof.body_color = info.get("color", Color(0.55, 0.85, 1.0))
+	return prof
+
+
+## Invented display name for this car. Used by the car-select screen.
 @export var display_name: String = "Car"
 
 ## One-line flavour blurb for the car-select screen.

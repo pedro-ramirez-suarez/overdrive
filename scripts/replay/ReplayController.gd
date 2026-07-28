@@ -44,22 +44,9 @@ func _spawn_ghosts() -> void:
 	for i in range(_replay.car_count()):
 		var info: Dictionary = _replay.car_infos[i]
 		var ghost: ArcadeCar = load(CAR_SCENE).instantiate()
-		var model_path: String = info.get("model_path", "")
-		if model_path != "":
-			# Prefer the live roster profile (correct auto-fit); fall back to a stub
-			# rebuilt from the recorded fields for a car no longer in the roster.
-			var prof: CarProfile = GameState.profile_for_model(model_path)
-			if prof == null:
-				prof = CarProfile.new()
-				prof.model_scene = load(model_path)
-				prof.model_scale = info.get("model_scale", 1.0)
-				prof.model_y_offset = info.get("model_y_offset", 0.0)
-				prof.model_yaw = info.get("model_yaw", 0.0)
-				prof.model_fit_width = info.get("model_fit_width", 0.0)
-				prof.model_fit_length = info.get("model_fit_length", 0.0)
-			ghost.profile = prof
-		else:
-			ghost.get_node("Visual").set("body_color", info.get("color", Color(0.8, 0.1, 0.12)))
+		# Roster profile when the car still exists, a rebuilt stub if only its model
+		# survives, else a plain body in the recorded colour — never a missing-file load.
+		ghost.profile = CarProfile.for_replay(info)
 		add_child(ghost)
 		# Turn the car into a purely visual, transform-driven prop.
 		ghost.set_physics_process(false)

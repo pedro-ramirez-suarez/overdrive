@@ -203,6 +203,14 @@ func _add_overpass_lower(faces: PackedVector3Array) -> void:
 		_add_tri(st, faces, Vector3(-HALF_CELL, 0, -hw), Vector3(HALF_CELL, 0, hw),
 			Vector3(-HALF_CELL, 0, hw), Vector3.UP, Vector3.UP, Vector3.UP)
 		_commit_extra(st, "OverpassLower", _road_material())
+		# The lower road is built here, not from the swept frames, so it misses the
+		# kerbs and centre line every other tile gets. Paint them along its own path:
+		# it runs E-W (local X) at ground level, so lateral is Z.
+		var lower_frames: Array[Dictionary] = [
+			{"pos": Vector3(-HALF_CELL, 0.0, 0.0), "normal": Vector3.UP, "lateral": Vector3(0.0, 0.0, 1.0)},
+			{"pos": Vector3(HALF_CELL, 0.0, 0.0), "normal": Vector3.UP, "lateral": Vector3(0.0, 0.0, 1.0)},
+		]
+		_add_markings(lower_frames)
 
 	# Piers, set outside the lower road's width so they can't be hit head-on, and
 	# kept inside the cell so they don't intrude on the neighbouring tile.

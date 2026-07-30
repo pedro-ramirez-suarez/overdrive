@@ -13,6 +13,7 @@ const BUNDLED := [
 	"res://tracks/fast.json",
 	"res://tracks/test_track.json",
 	"res://tracks/serpentine_ridge.json",
+	"res://tracks/alpine_pass.json",
 ]
 const NONE := Vector2i(2147483647, 2147483647)
 

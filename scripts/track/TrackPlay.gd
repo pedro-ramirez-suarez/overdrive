@@ -49,7 +49,7 @@ func _add_hud() -> void:
 	var layer := CanvasLayer.new()
 	add_child(layer)
 	var label := Label.new()
-	label.text = "Esc: back to editor    R: reset car    ` : debug"
+	label.text = "Esc: back to editor    R: reset car    Space: handbrake    ` : debug"
 	label.position = Vector2(12, 12)
 	label.add_theme_color_override("font_outline_color", Color.BLACK)
 	label.add_theme_constant_override("outline_size", 4)

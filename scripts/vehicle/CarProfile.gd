@@ -109,6 +109,16 @@ static func for_replay(info: Dictionary) -> CarProfile:
 ## grip to allow slides). 0..1.
 @export_range(0.0, 1.0) var handbrake_grip_mult: float = 0.25
 
+## While the handbrake is held, the commanded yaw rate is multiplied by this, so the
+## rear steps out and the nose rotates into the corner (oversteer / drift) rather than
+## the car just sliding straight on.
+@export var handbrake_yaw_boost: float = 2.1
+
+## While the handbrake is held, the low-speed turn limiter is lifted to at least this
+## (0..1), so yanking it in a tight corner pivots the chassis even when nearly stopped
+## — the weight-transfer rotation that beats understeer.
+@export_range(0.0, 1.0) var handbrake_pivot_mobility: float = 0.65
+
 # --- Off-track penalty (SPEC.md §M4-ish) ------------------------------------
 
 ## Fraction of max_speed the car is limited to when off the track (>=50% of the

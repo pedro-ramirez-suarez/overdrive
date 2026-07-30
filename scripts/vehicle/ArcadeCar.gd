@@ -433,6 +433,17 @@ func _apply_steering(delta: float) -> void:
 
 	# Need some speed to turn; steer direction follows travel direction.
 	var mobility: float = clampf(absf(forward_speed) / 3.0, 0.0, 1.0)
+	var responsiveness: float = profile.turn_responsiveness
+
+	# Handbrake: the rear breaks loose (grip is cut in _apply_grip), so the chassis
+	# rotates faster than the tyres would allow — oversteer. The low-speed limiter is
+	# also lifted, so a yank in a tight corner pivots the nose toward the exit even
+	# when nearly stopped (weight transfer beating understeer). Only on the ground.
+	if handbrake:
+		steer_speed *= profile.handbrake_yaw_boost
+		mobility = maxf(mobility, profile.handbrake_pivot_mobility)
+		responsiveness *= 1.5
+
 	var travel_sign: float = 1.0 if forward_speed >= -0.5 else -1.0
 	# Negated: positive yaw about +up is counter-clockwise (a LEFT turn) in
 	# Godot's right-handed frame, so steer_right must drive yaw negative.
@@ -441,7 +452,7 @@ func _apply_steering(delta: float) -> void:
 	# Chase the target yaw rate but only touch the component about `up`, so pitch
 	# and roll (needed for loops in M2) are untouched.
 	var current_yaw: float = angular_velocity.dot(up)
-	var new_yaw: float = lerpf(current_yaw, target_yaw, clampf(profile.turn_responsiveness * delta, 0.0, 1.0))
+	var new_yaw: float = lerpf(current_yaw, target_yaw, clampf(responsiveness * delta, 0.0, 1.0))
 	angular_velocity += up * (new_yaw - current_yaw)
 
 

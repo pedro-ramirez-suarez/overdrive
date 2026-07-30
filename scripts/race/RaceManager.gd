@@ -856,7 +856,7 @@ func _build_hud() -> void:
 
 	# Controls hint sits above the speedometer so the two don't overlap.
 	var hint := Label.new()
-	hint.text = "Esc: pause    R: respawn    C: camera"
+	hint.text = "Esc: pause    R: respawn    C: camera    Space: handbrake"
 	hint.anchor_top = 1.0
 	hint.anchor_bottom = 1.0
 	hint.offset_left = 16

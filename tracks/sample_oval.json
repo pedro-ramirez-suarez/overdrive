@@ -1,17 +1,69 @@
 {
+  "format": "OVERDRIVE_TRACK",
   "version": 1,
   "name": "Sample Oval",
   "author": "OVERDRIVE",
   "grid": [
-    { "cell_x": 0, "cell_y": -1, "def_id": "start", "rotation": 0, "elevation_level": 0 },
-    { "cell_x": 0, "cell_y": -2, "def_id": "curve", "rotation": 1, "elevation_level": 0 },
-    { "cell_x": 1, "cell_y": -2, "def_id": "straight", "rotation": 1, "elevation_level": 0 },
-    { "cell_x": 2, "cell_y": -2, "def_id": "curve", "rotation": 2, "elevation_level": 0 },
-    { "cell_x": 2, "cell_y": -1, "def_id": "straight", "rotation": 0, "elevation_level": 0 },
-    { "cell_x": 2, "cell_y": 0, "def_id": "curve", "rotation": 3, "elevation_level": 0 },
-    { "cell_x": 1, "cell_y": 0, "def_id": "straight", "rotation": 1, "elevation_level": 0 },
-    { "cell_x": 0, "cell_y": 0, "def_id": "curve", "rotation": 0, "elevation_level": 0 }
+    {
+      "cell_x": 0,
+      "cell_y": -1,
+      "def_id": "start",
+      "rotation": 0,
+      "elevation_level": 0
+    },
+    {
+      "cell_x": 0,
+      "cell_y": -2,
+      "def_id": "curve",
+      "rotation": 1,
+      "elevation_level": 0
+    },
+    {
+      "cell_x": 1,
+      "cell_y": -2,
+      "def_id": "straight",
+      "rotation": 1,
+      "elevation_level": 0
+    },
+    {
+      "cell_x": 2,
+      "cell_y": -2,
+      "def_id": "curve",
+      "rotation": 2,
+      "elevation_level": 0
+    },
+    {
+      "cell_x": 2,
+      "cell_y": -1,
+      "def_id": "straight",
+      "rotation": 0,
+      "elevation_level": 0
+    },
+    {
+      "cell_x": 2,
+      "cell_y": 0,
+      "def_id": "curve",
+      "rotation": 3,
+      "elevation_level": 0
+    },
+    {
+      "cell_x": 1,
+      "cell_y": 0,
+      "def_id": "straight",
+      "rotation": 1,
+      "elevation_level": 0
+    },
+    {
+      "cell_x": 0,
+      "cell_y": 0,
+      "def_id": "curve",
+      "rotation": 0,
+      "elevation_level": 0
+    }
   ],
-  "start_cell": [0, -1],
+  "start_cell": [
+    0,
+    -1
+  ],
   "metadata": {}
 }

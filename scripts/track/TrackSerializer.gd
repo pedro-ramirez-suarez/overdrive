@@ -5,6 +5,9 @@ extends RefCounted
 ## elevation_level}], start_cell:[x,y], metadata }.
 
 const VERSION := 1
+## Magic string stamped into every track file, so an arbitrary JSON can be told apart
+## from a track at a glance and a foreign file is rejected on import.
+const SIGNATURE := "OVERDRIVE_TRACK"
 const USER_DIR := "user://tracks"
 ## Tracks that ship with the game and appear in the list on a fresh install, before
 ## the player has built any of their own.
@@ -48,7 +51,7 @@ static func to_dict(grid: TrackGrid, lib: TileLibrary, track_name: String, autho
 			"lakes": GameState.current_terrain.lakes_to_array(),
 		}
 	return {
-		"version": VERSION, "name": track_name, "author": author,
+		"format": SIGNATURE, "version": VERSION, "name": track_name, "author": author,
 		"grid": cells, "props": props, "start_cell": start_arr,
 		"terrain": terrain_data, "metadata": {},
 	}
@@ -64,13 +67,48 @@ static func save(grid: TrackGrid, lib: TileLibrary, path: String, track_name: St
 	return true
 
 
+## Why a parsed value is not a loadable track, or "" if it is one. The SIGNATURE is
+## the primary check; files written before it existed are still accepted when they
+## carry a well-formed tile grid, so older saves keep loading. Anything else — a
+## foreign JSON, or a track whose grid is missing/malformed — is rejected with a
+## reason the UI can show.
+static func validation_error(data: Variant) -> String:
+	if typeof(data) != TYPE_DICTIONARY:
+		return "This file is not a track."
+	var d: Dictionary = data
+	var grid: Variant = d.get("grid", null)
+	if String(d.get("format", "")) != SIGNATURE:
+		if typeof(grid) != TYPE_ARRAY or (grid as Array).is_empty():
+			return "This file is not an OVERDRIVE track (missing signature)."
+	if typeof(grid) != TYPE_ARRAY:
+		return "This track file is corrupt: it has no tile grid."
+	for c in (grid as Array):
+		if typeof(c) != TYPE_DICTIONARY or not (c.has("cell_x") and c.has("cell_y") and c.has("def_id")):
+			return "This track file is corrupt: malformed tile data."
+	return ""
+
+
+## Why the FILE at `path` is not a loadable track, or "" if it is one. Used to show a
+## proper error before importing an unknown file.
+static func file_error(path: String) -> String:
+	if not FileAccess.file_exists(path):
+		return "File not found."
+	var text := FileAccess.get_file_as_string(path)
+	if text.strip_edges() == "":
+		return "This file is empty."
+	var data: Variant = JSON.parse_string(text)
+	if data == null:
+		return "This file isn't valid JSON — it may be corrupt or not a track."
+	return validation_error(data)
+
+
 ## Returns { grid: TrackGrid, name: String, author: String, terrain: Terrain } or
-## {} on failure.
+## {} if the file is missing, corrupt, or not a track (see validation_error).
 static func load_track(path: String, lib: TileLibrary) -> Dictionary:
 	if not FileAccess.file_exists(path):
 		return {}
 	var data: Variant = JSON.parse_string(FileAccess.get_file_as_string(path))
-	if typeof(data) != TYPE_DICTIONARY:
+	if validation_error(data) != "":
 		return {}
 	return from_dict(data, lib)
 

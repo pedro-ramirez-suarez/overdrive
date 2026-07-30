@@ -1159,6 +1159,12 @@ func _open_load_dialog() -> void:
 
 
 func _load_track_file(path: String) -> void:
+	# Validate first, so a foreign or corrupt file is refused with a clear reason and
+	# nothing is imported.
+	var err := TrackSerializer.file_error(path)
+	if err != "":
+		_flash(err)
+		return
 	var result := TrackSerializer.load_track(path, _library)
 	if result.is_empty():
 		_flash("Could not read that track file.")

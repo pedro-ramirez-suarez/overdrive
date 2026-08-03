@@ -124,6 +124,9 @@ func _update_brake_lights() -> void:
 ## rotation is needed. Every car gets them, so the field lights the track up.
 var _headlight_spots: Array[SpotLight3D] = []
 var _headlight_bulbs: Array[MeshInstance3D] = []
+## A short-range warm light at the front, so the headlights spill onto the car and
+## ground itself (like the brake/police omni) instead of the sprite floating as an orb.
+var _headlight_glow: OmniLight3D = null
 
 
 func _add_headlights() -> void:
@@ -143,20 +146,62 @@ func _add_headlights() -> void:
 		add_child(spot)
 		_headlight_spots.append(spot)
 
-		var bulb := MeshInstance3D.new()
-		var s := SphereMesh.new()
-		s.radius = 0.07
-		s.height = 0.14
-		bulb.mesh = s
-		var m := StandardMaterial3D.new()
-		m.albedo_color = Color(1.0, 0.97, 0.88)
-		m.emission_enabled = true
-		m.emission = Color(1.0, 0.95, 0.8)
-		m.emission_energy_multiplier = 4.0
-		bulb.material_override = m
-		bulb.position = Vector3(side * 0.4, -0.08, -0.98)
+		var bulb := _glow_bulb(Vector3(side * 0.4, -0.08, -0.98), Color(1.0, 0.95, 0.82), 0.22)
 		add_child(bulb)
 		_headlight_bulbs.append(bulb)
+
+	# One warm near-glow across the nose, so the front of the car is lit and the two
+	# glows read as headlights spilling onto the bodywork — not orbs hanging in space.
+	var glow := OmniLight3D.new()
+	glow.position = Vector3(0.0, -0.02, -1.0)
+	glow.light_color = Color(1.0, 0.93, 0.78)
+	glow.omni_range = 2.6
+	glow.light_energy = 2.6
+	glow.shadow_enabled = false
+	add_child(glow)
+	_headlight_glow = glow
+
+
+## A soft glow sprite: a billboarded quad textured with a radial white->transparent
+## gradient, tinted and drawn additively so only light shows — the same "just light,
+## no solid" look as the police beacon and brake glow, rather than an emissive ball.
+func _glow_bulb(pos: Vector3, color: Color, size: float) -> MeshInstance3D:
+	var mi := MeshInstance3D.new()
+	var quad := QuadMesh.new()
+	quad.size = Vector2(size, size)
+	mi.mesh = quad
+	mi.position = pos
+	var mat := StandardMaterial3D.new()
+	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	mat.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
+	mat.billboard_mode = BaseMaterial3D.BILLBOARD_ENABLED
+	mat.albedo_texture = _glow_texture()
+	mat.albedo_color = color
+	mi.material_override = mat
+	return mi
+
+
+static var _glow_tex: Texture2D = null
+
+
+## Radial white->transparent gradient, shared by every glow sprite so a quad textured
+## with it fades softly to nothing at its edges — a round glow with no hard rim.
+static func _glow_texture() -> Texture2D:
+	if _glow_tex != null:
+		return _glow_tex
+	var grad := Gradient.new()
+	grad.offsets = PackedFloat32Array([0.0, 1.0])
+	grad.colors = PackedColorArray([Color(1, 1, 1, 1), Color(1, 1, 1, 0)])
+	var tex := GradientTexture2D.new()
+	tex.gradient = grad
+	tex.fill = GradientTexture2D.FILL_RADIAL
+	tex.fill_from = Vector2(0.5, 0.5)
+	tex.fill_to = Vector2(1.0, 0.5)
+	tex.width = 64
+	tex.height = 64
+	_glow_tex = tex
+	return _glow_tex
 
 
 ## Switch the headlights between the third-person look (visible bulbs at the
@@ -168,6 +213,8 @@ func _add_headlights() -> void:
 func set_first_person_lights(first_person: bool) -> void:
 	for b in _headlight_bulbs:
 		b.visible = not first_person
+	if _headlight_glow != null:
+		_headlight_glow.light_energy = 0.0 if first_person else 2.6
 	for i in range(_headlight_spots.size()):
 		var spot: SpotLight3D = _headlight_spots[i]
 		var side: float = -1.0 if i == 0 else 1.0

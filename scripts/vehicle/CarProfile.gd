@@ -45,6 +45,11 @@ static func for_replay(info: Dictionary) -> CarProfile:
 ## When true, CarBody mounts a revolving red/blue beacon on the roof — the police cars.
 @export var roof_beacon: bool = false
 
+## When true, CarBody spins this model's wheel meshes with road speed. Only worth it
+## on a car whose wheels are big and exposed enough to read — the monster truck; on
+## the low-slung cars the tyres are half-hidden and the spin is invisible churn.
+@export var spin_wheels: bool = false
+
 # --- Optional imported model (M6). If set, this scene is used as the car's
 # visual instead of the procedural CarBody. ---
 

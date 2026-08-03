@@ -93,6 +93,9 @@ static func _model_car(d: Array, curve: Curve, path_fmt: String) -> CarProfile:
 	p.handbrake_grip_mult = float(d[11])
 	p.body_color = d[12]
 	p.roof_beacon = String(d[0]).begins_with("police")
+	# Only the monster truck: its tyres are big and fully exposed, so a rolling wheel
+	# reads clearly. On the low-slung cars they are half-hidden behind bodywork.
+	p.spin_wheels = String(d[0]) == "monster_truck"
 	return p
 
 

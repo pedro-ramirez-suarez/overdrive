@@ -50,6 +50,8 @@ func _ready() -> void:
 			add_child(model)
 			if profile.roof_beacon:
 				_add_beacon(model)
+		if profile.spin_wheels:
+			_add_wheel_spin(model)
 		return
 
 	scale = Vector3(0.6, 0.6, 0.6)  # procedural bodies are authored at full size
@@ -119,6 +121,18 @@ func _add_beacon(visual_root: Node3D) -> void:
 		box.position.y + box.size.y - 0.06,
 		box.position.z + box.size.z * 0.5)
 	add_child(beacon)
+
+
+## Spin this model's wheels with road speed. Only on a real car (the menu preview has
+## no ArcadeCar parent, so its wheels simply stay still).
+func _add_wheel_spin(model: Node3D) -> void:
+	var car := get_parent() as ArcadeCar
+	if car == null:
+		return
+	var spinner := WheelSpinner.new()
+	spinner.name = "WheelSpin"
+	add_child(spinner)
+	spinner.setup(model, car)
 
 
 func _mesh_descendants(n: Node) -> Array[MeshInstance3D]:

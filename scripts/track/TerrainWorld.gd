@@ -5,7 +5,11 @@ extends RefCounted
 ## the terrain off-track; the surface is tagged "offtrack" for the speed penalty.
 
 const MARGIN := 24      # cells of terrain beyond the track bounds
-const MAX_SPAN := 200   # cap terrain size per axis
+## Cap on terrain size per axis, in cells. Big enough for the largest bundled
+## track plus its margins: past the cap the ground simply stops, which reads as a
+## hole in the world rather than a saving. Each extra 100 cells of span costs
+## roughly a third of a second of build time.
+const MAX_SPAN := 280
 
 
 ## Build terrain sized to the track bounds (+ margin).

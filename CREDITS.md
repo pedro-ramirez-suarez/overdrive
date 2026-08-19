@@ -23,11 +23,20 @@ including commercial, with no attribution required.
 
 ## Map data
 
-Two tracks are real places, and their layouts and hills come from open data:
+Several tracks are laid out from real places, and their shapes and hills come
+from open data. The names are our own — these are interpretations built on a
+grid of 8 m tiles, not reproductions, and nothing here is affiliated with or
+endorsed by any circuit, race or organiser:
 
 - **Tres Marías** — the Bulevar Alfredo Zalce circuit around Ciudad Tres Marías
   in Morelia, Michoacán.
-- **Nordschleife** — the Nürburgring Nordschleife in the Eifel, Germany.
+- **Eifelschleife** — the long forest circuit in the Eifel, Germany.
+- **Spaa Francorchant** — the Ardennes road circuit near Francorchamps, Belgium.
+- **Zuzuka** — the figure-of-eight circuit in Mie Prefecture, Japan.
+- **Momako** — the street circuit around the harbour of Monte Carlo, Monaco.
+- **Autódromo Hermanos Ramírez** — the circuit in the Magdalena Mixhuca park,
+  Mexico City.
+- **Baytona Oval** — the banked tri-oval at Daytona Beach, Florida.
 
 - Road and circuit geometry from **OpenStreetMap** — © OpenStreetMap
   contributors, made available under the **Open Database Licence (ODbL 1.0)**.

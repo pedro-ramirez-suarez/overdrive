@@ -75,19 +75,61 @@ static func _walk(state: Dictionary, current: Vector2i, path: Array[Vector2i], v
 	if path.size() > (state["open"] as Array).size():
 		state["open"] = path.duplicate()
 
-	for n in tile_neighbors(state["grid"], current):
+	for step in tile_neighbors_levelled(state["grid"], current):
+		var n: Vector2i = step[0]
 		if n == state["start"]:
 			# Back at the start: a complete lap. Longest wins.
 			if path.size() > 2 and path.size() > (state["cycle"] as Array).size():
 				state["cycle"] = path.duplicate()
 			continue
-		if visited.has(n):
+		# Keyed by the level the road is entered at, not by the tile: an overpass
+		# is two roads in one cell, and a circuit that crosses itself has to come
+		# through that cell twice -- once on the deck, once underneath. Every other
+		# tile has a single level, so this is the old rule for all of them.
+		var key: Vector3i = Vector3i(n.x, n.y, step[1])
+		if visited.has(key):
 			continue
-		visited[n] = true
+		visited[key] = true
 		path.append(n)
 		_walk(state, n, path, visited)
 		path.pop_back()
-		visited.erase(n)
+		visited.erase(key)
+
+
+## The same as tile_neighbors, but each entry carries the elevation level the road
+## is joined at: [anchor, level]. The walk needs it to tell an overpass's deck from
+## the road running underneath it.
+static func tile_neighbors_levelled(grid: TrackGrid, anchor: Vector2i) -> Array:
+	var out: Array = []
+	var placed: PlacedTile = grid.tiles.get(anchor)
+	var def: TileDefinition = grid.get_def(anchor)
+	if placed == null or def == null:
+		return out
+	var seen := {}
+	for c in TrackGrid.footprint_cells(anchor, def, placed.rotation):
+		for dir in range(4):
+			var n: Vector2i = c + TrackGrid.OFFSETS[dir]
+			var n_anchor: Vector2i = grid.get_anchor(n)
+			if n_anchor == TrackGrid.NONE or n_anchor == anchor:
+				continue
+			if not grid.cells_connected(c, n):
+				continue
+			var socket: Dictionary = grid.get_socket(n, TrackGrid.opposite(dir))
+			var level: int = int(socket.get("elevation_level", 0))
+			var key := Vector3i(n_anchor.x, n_anchor.y, level)
+			if seen.has(key):
+				continue
+			seen[key] = true
+			out.append([n_anchor, level])
+
+	# A launch ramp joins the road it throws you onto, across the gap between.
+	var landing := jump_landing(grid, anchor)
+	if landing != NONE:
+		var landed: PlacedTile = grid.tiles.get(landing)
+		var level: int = landed.elevation_level if landed != null else 0
+		if not seen.has(Vector3i(landing.x, landing.y, level)):
+			out.append([landing, level])
+	return out
 
 
 ## Anchors of the tiles whose road joins the tile at `anchor`. Every cell of the

@@ -9,7 +9,7 @@ const MARGIN := 24      # cells of terrain beyond the track bounds
 ## track plus its margins: past the cap the ground simply stops, which reads as a
 ## hole in the world rather than a saving. Each extra 100 cells of span costs
 ## roughly a third of a second of build time.
-const MAX_SPAN := 280
+const MAX_SPAN := 340
 
 
 ## Build terrain sized to the track bounds (+ margin).

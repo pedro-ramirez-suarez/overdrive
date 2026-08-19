@@ -23,15 +23,17 @@ including commercial, with no attribution required.
 
 ## Map data
 
-The **Tres Marías** track is a real place — the Bulevar Alfredo Zalce circuit
-around Ciudad Tres Marías in Morelia, Michoacán. Its layout and its hills come
-from open data:
+Two tracks are real places, and their layouts and hills come from open data:
 
-- Road geometry from **OpenStreetMap** — © OpenStreetMap contributors, made
-  available under the **Open Database Licence (ODbL 1.0)**.
+- **Tres Marías** — the Bulevar Alfredo Zalce circuit around Ciudad Tres Marías
+  in Morelia, Michoacán.
+- **Nordschleife** — the Nürburgring Nordschleife in the Eifel, Germany.
+
+- Road and circuit geometry from **OpenStreetMap** — © OpenStreetMap
+  contributors, made available under the **Open Database Licence (ODbL 1.0)**.
   <https://www.openstreetmap.org/copyright>
-  The track is a produced work derived from that data, so the attribution above
-  must travel with any build that ships it.
+  These tracks are produced works derived from that data, so the attribution
+  above must travel with any build that ships them.
 
 - Ground heights from the **NASA/USGS Shuttle Radar Topography Mission** 1
   arc-second dataset (SRTM), courtesy of the U.S. Geological Survey —

@@ -13,6 +13,11 @@ export_presets.cfg
 .mono/
 data_*/
 
+# Track generator working files: downloaded map extracts and elevation tiles
+# (hundreds of MB), and whatever it builds. See tools/trackgen/README.md.
+tools/trackgen/data/
+tools/trackgen/out/
+
 # OS / editor cruft
 .DS_Store
 Thumbs.db

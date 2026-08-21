@@ -102,6 +102,9 @@ const M_PER_LAT := 111132.0       ## metres per degree of latitude
 const RAMP_GAP := 8               ## flat cells between ramps that still counts as a staircase
 const RAMP_RUN_MAX := 4           ## longest run to roll a staircase into, in ramps
 const RAMP_OFF_MAX := 2           ## levels the road may sit off the ground to do it
+const DIP_GAP := 10                ## flat cells between a descent and the climb out of it
+const DIP_SPAN := 26              ## longest dip to carry straight across, in cells
+const DIP_MAX := 5                ## levels of dip to cancel; deeper ones keep their edges
 
 const DIRS: Array[Vector2i] = [Vector2i(0, -1), Vector2i(1, 0), Vector2i(0, 1), Vector2i(-1, 0)]
 
@@ -604,6 +607,66 @@ func plan_elevation(cells: Array, rampable: Array, target: Array) -> Dictionary:
 		level += ramp[k]
 	return {"entry": entry, "ramp": ramp}
 
+## Carry the road straight across a dip instead of diving into it.
+##
+## Where the ground falls away and rises again within a few cells, following it
+## puts a V in the road: down four levels, along, up four levels, all inside a
+## couple of hundred metres. Real roads do not do that -- they cross on an
+## embankment. Cancelling the descent against the ascent leaves the road level,
+## and since the ground under a tile is flattened to that tile, the embankment
+## builds itself.
+##
+## Only short dips: a long one is a valley, and crossing a valley on a causeway
+## would look sillier than driving through it.
+func flatten_dips(n: int, rampable: Array, ramp: Array, frozen: Dictionary) -> int:
+	var runs := ramp_runs(n, ramp)
+	var flattened := 0
+	for i in range(runs.size() - 1):
+		var a: Dictionary = runs[i]
+		var b: Dictionary = runs[i + 1]
+		if int(a["dir"]) != -int(b["dir"]):
+			continue                      # both the same way: a slope, not a dip
+		if int(a["dir"]) > 0:
+			continue                      # up then down is a crest, and crests are fine
+		var gap: int = int(b["from"]) - int(a["to"]) - 1
+		if gap > DIP_GAP:
+			continue
+		var span: int = int(b["to"]) - int(a["from"]) + 1
+		if span > DIP_SPAN:
+			continue
+		var depth: int = mini(mini(int(a["len"]), int(b["len"])), DIP_MAX)
+		if depth < 1:
+			continue
+		var blocked := false
+		for k in range(depth):
+			if frozen.has(int(a["to"]) - k) or frozen.has(int(b["from"]) + k):
+				blocked = true
+		if blocked:
+			continue
+		# take them off the bottom of the descent and the bottom of the climb, so
+		# what is left of a deeper dip still drops away at its edges
+		for k in range(depth):
+			ramp[int(a["to"]) - k] = 0
+			ramp[int(b["from"]) + k] = 0
+		flattened += 1
+	return flattened
+
+## The runs of consecutive ramps in the plan, as { from, to, dir, len }.
+static func ramp_runs(n: int, ramp: Array) -> Array:
+	var runs: Array = []
+	var i := 0
+	while i < n:
+		var dir: int = int(ramp[i])
+		if dir == 0:
+			i += 1
+			continue
+		var j := i
+		while j + 1 < n and int(ramp[j + 1]) == dir:
+			j += 1
+		runs.append({"from": i, "to": j, "dir": dir, "len": j - i + 1})
+		i = j + 1
+	return runs
+
 ## Roll a staircase into a slope.
 ##
 ## A ramp climbs exactly one level per cell, and the planner lays one down
@@ -906,7 +969,11 @@ func _init() -> void:
 	var before_off := 0
 	for i in range(n):
 		before_off = maxi(before_off, absi(int(entry[i]) - int(target_for_slopes[i])))
+	var dips := flatten_dips(n, rampable, ramp, frozen)
 	var merged := compact_ramps(n, rampable, ramp, entry, target_for_slopes, frozen, RAMP_GAP)
+	# Rolling staircases together can push a descent and a climb into each other,
+	# making a V that was not there a moment ago, so sweep for dips once more.
+	dips += flatten_dips(n, rampable, ramp, frozen)
 	var level_now: int = int(entry[0])
 	for i in range(n):
 		entry[i] = level_now
@@ -915,8 +982,8 @@ func _init() -> void:
 	var target_now := target_levels(cells, base, {})
 	for i in range(n):
 		off_ground = maxi(off_ground, absi(int(entry[i]) - int(target_now[i])))
-	print("  slopes: ", merged, " steps rolled into runs, road off the ground ",
-		before_off, " -> ", off_ground, " level(s)")
+	print("  slopes: ", dips, " dips carried across, ", merged, " steps rolled into runs, ",
+		"road off the ground ", before_off, " -> ", off_ground, " level(s)")
 
 	var dropped_b := drop_conflicting(cells, cover, banked, entry, ramp)
 	var dropped_w := drop_conflicting(cells, cover, wides, entry, ramp)

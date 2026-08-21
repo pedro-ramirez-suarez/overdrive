@@ -111,6 +111,29 @@ any build that ships the track.
 | `tunnels` | lat/lon boxes where the road runs in a tunnel |
 | `tree_reach`, `building_reach` | how far from the track scenery is placed, in cells |
 
+## What it does to the elevation
+
+The engine has one climbing piece: a ramp, exactly one level (3 m) per cell.
+There is no shallow ramp, so a road that simply follows the ground comes out as
+stairs and V-shaped kinks. Two passes tidy that up, both global constants at the
+top of `build_track.gd` rather than per-circuit settings:
+
+- **Dips are carried across** (`DIP_*`). Where the ground falls away and rises
+  again within `DIP_GAP` cells, the descent is cancelled against the climb and
+  the road stays level — the ground under a tile is flattened to it, so the
+  embankment builds itself. Only up to `DIP_SPAN` cells, because a long dip is a
+  valley and crossing one on a causeway looks sillier than driving through it,
+  and only `DIP_MAX` levels deep, so a deep dip keeps its edges. Crests are left
+  alone: a brow is a real feature and fun to drive.
+- **Staircases are rolled into slopes** (`RAMP_*`). Ramps within `RAMP_GAP` cells
+  of each other slide into one continuous run, so the road climbs once instead of
+  stepping up. A merge only happens while the road stays within `RAMP_OFF_MAX`
+  levels of the ground, checked per merge.
+
+Both keep the number and direction of ramps balanced, so the lap always comes
+home to the level it left at. The build prints what it did:
+`slopes: 8 dips carried across, 12 steps rolled into runs`.
+
 ## Things that will bite
 
 - **Scenery is expensive.** Every prop is a solid body with its own mesh. The

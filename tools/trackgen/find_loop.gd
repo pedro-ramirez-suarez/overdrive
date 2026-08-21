@@ -11,6 +11,18 @@ const ROUTES := "res://tools/trackgen/routes"
 const OUT := "res://tools/trackgen/out"
 
 const CIRCUITS := {
+	# The pass: up the hairpins from the valley to the top, and back down. Nothing
+	# to exclude -- there is only one road up there.
+	"stelvio": {
+		"lat0": 46.5330, "lon0": 10.4700,
+		"include": ["road"],
+		"exclude": ["Umbrail"],
+		"mode": "out_back",
+		"ignore_oneway": true,
+		# the summit, and the foot of the hairpin stack below it
+		"anchors": [[46.52855, 10.45265], [46.53430, 10.49180]],
+		"climb_m": 2600.0,
+	},
 	"spa": {
 		"lat0": 50.4400, "lon0": 5.9700,
 		"include": ["raceway"],
@@ -100,6 +112,9 @@ var adj := {}
 
 func proj(lat: float, lon: float) -> Vector2:
 	return Vector2((lon - lon0) * 111320.0 * cos(deg_to_rad(lat0)), -(lat - lat0) * 111132.0)
+
+func unproj(p: Vector2) -> Vector2:
+	return Vector2(lat0 - p.y / 111132.0, lon0 + p.x / (111320.0 * cos(deg_to_rad(lat0))))
 
 func add_edge(a: int, b: int) -> void:
 	if not adj.has(a):
@@ -245,7 +260,76 @@ func _init() -> void:
 			best_score = d
 			first_hop = e[0]
 	var route_nodes: Array = []
-	if String(cfg.get("mode", "walk")) == "traced":
+	var extra: Array = []   ## synthetic points appended after the real road
+	if String(cfg.get("mode", "walk")) == "out_back":
+		# A mountain pass is not a loop, and the game needs one. Retracing the road
+		# does not work: two ribbons and the clear cell the generator keeps between
+		# them need more room than the shelves of a hairpin stack leave. So the lap
+		# climbs the real hairpins and comes back down a road of our own -- an arc
+		# swung wide of the stack, dropping the whole height down the open flank.
+		var up := shortest_path(nearest_node(proj(anchors[0][0], anchors[0][1])),
+			nearest_node(proj(anchors[1][0], anchors[1][1])))
+		if up.is_empty():
+			print("  NO PATH between the two ends")
+			quit(1)
+			return
+		# optionally only the top of the pass: the climb is cut at climb_m of road
+		var limit: float = float(cfg.get("climb_m", 0.0))
+		if limit > 0.0:
+			var run := 0.0
+			var cut := up.size()
+			for k in range(1, up.size()):
+				run += pos[up[k]].distance_to(pos[up[k - 1]])
+				if run > limit:
+					cut = k + 1
+					break
+			up = up.slice(0, cut)
+		# anchors[0] is the summit, so the road as found comes down. Turn it round:
+		# the lap should climb the hairpins first and use the descent as the payoff.
+		up.reverse()
+		route_nodes = up.duplicate()
+		var climb: Array = []
+		for nid in up:
+			climb.append(pos[nid])
+		var foot: Vector2 = climb[0]
+		var top: Vector2 = climb[climb.size() - 1]
+		var clear_m: float = float(cfg.get("return_clear_m", 30.0))
+		var join_m: float = float(cfg.get("return_join_m", 70.0))
+		# Bow the return away from the stack, taking the first side and offset that
+		# clears every hairpin. Both sides are tried because which one is open
+		# depends on which way the road happens to lie.
+		var arc: Array = []
+		for off in range(60, 620, 20):
+			for side_v in [1.0, -1.0]:
+				var side := float(side_v)
+				var dir: Vector2 = (foot - top).normalized()
+				var nrm := Vector2(-dir.y, dir.x) * side * float(off)
+				var ctrl: Vector2 = (top + foot) * 0.5 + nrm
+				var try_arc: Array = []
+				var worst := INF
+				for s in range(1, 121):
+					var t := float(s) / 121.0
+					var p: Vector2 = top.lerp(ctrl, t).lerp(ctrl.lerp(foot, t), t)
+					try_arc.append(p)
+					if p.distance_to(top) < join_m or p.distance_to(foot) < join_m:
+						continue
+					for q in climb:
+						worst = minf(worst, p.distance_to(q))
+				if worst >= clear_m:
+					arc = try_arc
+					print("  return: bowed ", off, " m to the ",
+						"left" if side > 0.0 else "right", ", clears by ", int(worst), " m")
+					break
+			if not arc.is_empty():
+				break
+		if arc.is_empty():
+			print("  NO ROOM for a return that clears the stack")
+			quit(1)
+			return
+		extra = arc
+		print("  climb: ", up.size(), " points, with the return: ",
+			up.size() + arc.size())
+	elif String(cfg.get("mode", "walk")) == "traced":
 		# Each traced point is only a hundred metres or so from the next, so the
 		# shortest path between them has nowhere to wander off to.
 		var tl: Array = cfg["trace_top_left"]
@@ -286,8 +370,10 @@ func _init() -> void:
 		quit(1)
 		return
 	# Snapping a traced point onto a quay or a slip road makes the route dart out
-	# and back; those spurs are not part of any lap, so they go.
-	var pruned := 1
+	# and back; those spurs are not part of any lap, so they go. An out-and-back
+	# retraces the same road on purpose, so it is exempt from both sweeps.
+	var retrace: bool = String(cfg.get("mode", "walk")) == "out_back"
+	var pruned := 1 if not retrace else 0
 	while pruned > 0:
 		pruned = 0
 		var kept: Array = []
@@ -305,28 +391,35 @@ func _init() -> void:
 		route_nodes = kept
 	# The same, for a detour that goes out one road and comes back on another: any
 	# node visited twice close together brackets a loop that is not part of the lap.
-	var seen := {}
-	var clean: Array = []
+	if not retrace:
+		var seen := {}
+		var clean: Array = []
+		for nid in route_nodes:
+			if seen.has(nid) and clean.size() - int(seen[nid]) < 80:
+				while clean.size() > int(seen[nid]) + 1:
+					seen.erase(clean.pop_back())
+				continue
+			seen[nid] = clean.size()
+			clean.append(nid)
+		route_nodes = clean
+	# Real road nodes, then any road of our own making, as one closed polyline.
+	var poly: Array = []
 	for nid in route_nodes:
-		if seen.has(nid) and clean.size() - int(seen[nid]) < 80:
-			while clean.size() > int(seen[nid]) + 1:
-				seen.erase(clean.pop_back())
-			continue
-		seen[nid] = clean.size()
-		clean.append(nid)
-	route_nodes = clean
+		poly.append(pos[nid])
+	for p in extra:
+		poly.append(p)
 	var total := 0.0
-	for k in range(1, route_nodes.size()):
-		total += pos[route_nodes[k]].distance_to(pos[route_nodes[k - 1]])
-	total += pos[route_nodes[0]].distance_to(pos[route_nodes[route_nodes.size() - 1]])
-	print("  lap: ", route_nodes.size(), " points, ", int(total), " m")
+	for k in range(1, poly.size()):
+		total += (poly[k] as Vector2).distance_to(poly[k - 1])
+	total += (poly[0] as Vector2).distance_to(poly[poly.size() - 1])
+	print("  lap: ", poly.size(), " points, ", int(total), " m")
 
 	var lo := Vector2(INF, INF)
 	var hi := Vector2(-INF, -INF)
 	var pts: Array = []
-	for nid in route_nodes:
-		var p: Vector2 = pos[nid]
-		var ll: Vector2 = geo[nid]
+	for pp in poly:
+		var p: Vector2 = pp
+		var ll: Vector2 = unproj(p)
 		lo = Vector2(minf(lo.x, p.x), minf(lo.y, p.y))
 		hi = Vector2(maxf(hi.x, p.x), maxf(hi.y, p.y))
 		pts.append({"x": p.x, "y": p.y, "lat": ll.x, "lon": ll.y})

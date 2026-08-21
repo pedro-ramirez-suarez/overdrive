@@ -2,7 +2,7 @@
 
 Builds an OVERDRIVE track from a real place: a lap traced out of OpenStreetMap,
 laid onto the 8 m tile grid, with the ground under it sculpted from SRTM
-elevation data. Seven of the bundled tracks were made with it.
+elevation data. Eight of the bundled tracks were made with it.
 
 It runs headless in Godot, from the project root:
 
@@ -21,6 +21,7 @@ file byte-identical to the one in `tracks/`, because each circuit's entry in
 | `find_loop.gd` | OSM extract → one lap, as a list of points (`routes/*.json`) |
 | `build_track.gd` | a lap → a finished track (`out/*.json`) |
 | `map_circuit.gd` | draws an OSM extract, for finding your way around |
+| `check_track.gd` | walks a built track the way the race does, and looks for buried road |
 | `zoom_map.gd` | draws a lat/lon window of it, for reading off coordinates |
 | `routes/` | the extracted laps — committed, they are the fiddly part |
 | `queries/` | the Overpass queries each circuit was fetched with |
@@ -71,7 +72,7 @@ blue, with a lat/lon graticule. `zoom_map.gd` takes a window
 precisely.
 
 **2. Extract the lap.** Add an entry to `CIRCUITS` in `find_loop.gd` and run it.
-There are three ways to trace a lap, in order of preference:
+There are four ways to trace a lap, in order of preference:
 
 - **`walk`** (the default) — filter out the pit lanes and side tracks, then drive
   the graph: from the start, always take the outgoing edge that bends least,
@@ -85,6 +86,12 @@ There are three ways to trace a lap, in order of preference:
   each point is snapped to the nearest real road node. Monte Carlo needed this:
   it is public street, mapped as raceway only in fragments, and shortest paths
   between distant anchors kept ducking down side streets.
+- **`out_back`** — for a road that is not a loop at all. It takes the shortest
+  path between two anchors, keeps `climb_m` of it and turns it round so the lap
+  climbs, then closes the lap on a road of its own: an arc bowed away from the
+  real one until it clears every point of it by `return_clear_m`, one side and
+  one offset at a time. The Stelvio needs this. Retracing the pass instead is
+  the obvious idea and it does not work — see the note below.
 
 Check `out/newtrack_route.png` and the printed length against the real one before
 going further. A wrong lap wastes everything downstream.
@@ -92,7 +99,18 @@ going further. A wrong lap wastes everything downstream.
 **3. Build it.** Add an entry to `CIRCUITS` in `build_track.gd` and run it. Start
 with `scale` and `vstep`; the rest have sensible defaults.
 
-**4. Register it.** Copy `out/newtrack.json` into `tracks/`, add it to
+**4. Check it.** A track can look right in the JSON and still break in the
+game, so walk it the way the race will:
+
+```bash
+godot --headless --path . tools/trackgen/check_track.tscn -- tools/trackgen/out/newtrack.json
+```
+
+The route has to come out COMPLETE — as many tiles walked as laid — and the
+buried-cell counts should sit where the other tracks do (45–70 cells, one or two
+levels).
+
+**5. Register it.** Copy `out/newtrack.json` into `tracks/`, add it to
 `TrackSerializer.BUNDLED`, and add the place to the map-data section of
 `CREDITS.md` — OpenStreetMap's licence requires the attribution to travel with
 any build that ships the track.
@@ -102,7 +120,9 @@ any build that ships the track.
 | key | what it does |
 |---|---|
 | `scale` | game metres per real metre. 1.0 keeps real corner radii; the two big road courses had to shrink to 0.35–0.40 to fit |
-| `vstep` | real metres per elevation level. The engine has 16 levels of 3 m, so this sets how much of the real relief survives |
+| `vstep` | real metres per elevation level. This sets how much of the real relief survives |
+| `knee`, `knee_scale` | squash relief above `knee` levels by `knee_scale`, so a hilly place fits without flattening the parts you feel. A pass wants none of it: `knee` 999, `knee_scale` 1.0 |
+| `max_level` | ceiling for road and ground, in levels. 16 by default, which is what the engine allowed when the first tracks were built; the Stelvio takes the full 32 |
 | `smooth` | how far the elevation is averaged along the lap, in cells. Higher on noisy ground |
 | `start_near` | `[lat, lon]` of the start/finish line |
 | `lateral` | for a divided road: how far each carriageway is nudged to its own right, in cells |
@@ -152,6 +172,13 @@ home to the level it left at. The build prints what it did:
 - **Nothing may touch anything else.** The router keeps a clear cell around
   track already laid, because two unrelated stretches sharing a terrain corner
   lift the lower one's verge over its own tarmac.
+- **A hairpin stack will not take a road twice.** The Stelvio was first traced
+  out and back along the pass, the way a divided road is laid: two ribbons on one
+  alignment. It cannot be routed. The shelves of the stack are 12–23 m apart, and
+  two ribbons with the clear cell between them need three cells — 24 m — so the
+  return lane is walled shut and half the legs fail. Widening the scale until it
+  fits doubles the tile count and flattens the climb. Bringing the lap home on
+  its own road is what works.
 
 The scripts live inside the game project so they can be run with `--path .`, so
 they do get swept into an export unless you exclude `tools/*` in the export

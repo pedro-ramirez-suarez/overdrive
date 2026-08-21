@@ -22,7 +22,7 @@ const ROUTES := "res://tools/trackgen/routes"
 const OUT := "res://tools/trackgen/out"
 const DIM := 3601
 const CELL := 8.0
-const MAX_LEVEL := 16
+const MAX_LEVEL := 16             ## ceiling for road and ground, in levels; the engine allows 32
 
 const CIRCUITS := {
 	# A divided road rather than a circuit: the lap runs out along one carriageway
@@ -45,6 +45,19 @@ const CIRCUITS := {
 		"resample": 6.0, "turn_cost": 3.0,
 		"tree_reach": 9, "building_reach": 13, "tree_step": 3,
 		"tree_conifer": 0.7, "seed": 20260819,
+	},
+	# A mountain pass, not a circuit. Retracing the road to close the lap does not
+	# work -- two ribbons and the clear cell between them need more room than the
+	# shelves of a hairpin stack leave -- so find_loop brings it home on a road of
+	# its own, swung wide of the stack (see its "out_back" mode). The scale is up
+	# at 1.5 to hold the hairpins apart, and max_level lifts the ceiling to the 32
+	# the engine now allows: a pass wants its whole height.
+	"stelvio": {
+		"name": "Stelvia Pass", "out": "stelvia_pass",
+		"scale": 1.50, "vstep": 8.0, "knee": 999.0, "knee_scale": 1.0,
+		"smooth": 3, "start_near": [46.53075, 10.45945],
+		"separation": 2.6, "resample": 3.0, "max_level": 32,
+		"tree_reach": 6, "building_reach": 10, "tree_step": 4,
 	},
 	"spa": {
 		"name": "Spaa Francorchant", "out": "spaa_francorchant",
@@ -139,6 +152,7 @@ var hug_cost := HUG_COST
 var margin := MARGIN
 var m_per_lat := M_PER_LAT
 var lateral := 0.0
+var max_level := MAX_LEVEL
 
 # --- DEM ------------------------------------------------------------------
 
@@ -572,7 +586,7 @@ func target_levels(cells: Array, base: float, pins: Dictionary) -> Array:
 		var sum := 0.0
 		for k in range(-smooth, smooth + 1):
 			sum += float(e[(i + k + n * 2) % n])
-		out.append(clampi(int(round(to_level(sum / float(smooth * 2 + 1) - base))), 0, MAX_LEVEL - 2))
+		out.append(clampi(int(round(to_level(sum / float(smooth * 2 + 1) - base))), 0, max_level - 2))
 	for i in pins:
 		out[int(i)] = int(pins[i])
 	return out
@@ -817,6 +831,7 @@ func _init() -> void:
 	margin = cfg.get("margin", MARGIN)
 	m_per_lat = cfg.get("m_per_lat", M_PER_LAT)
 	lateral = cfg.get("lateral", 0.0)
+	max_level = cfg.get("max_level", MAX_LEVEL)
 	var route_name: String = String(cfg.get("route", id + "_route"))
 	var route: Dictionary = JSON.parse_string(
 		FileAccess.get_file_as_string("%s/%s.json" % [ROUTES, route_name]))
@@ -1103,7 +1118,7 @@ func _init() -> void:
 	for i in range(t_lo.x, t_hi.x + 2):
 		for j in range(t_lo.y, t_hi.y + 2):
 			var e: float = elevation_at_cell(Vector2(float(i) - 0.5, float(j) - 0.5))
-			var lvl: int = clampi(int(round(to_level(e - base))), 0, MAX_LEVEL)
+			var lvl: int = clampi(int(round(to_level(e - base))), 0, max_level)
 			ground_hi = maxi(ground_hi, lvl)
 			edits.append(i)
 			edits.append(j)

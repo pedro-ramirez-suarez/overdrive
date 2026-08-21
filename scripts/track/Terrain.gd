@@ -79,7 +79,10 @@ func setup(p_type: int, p_seed: int) -> void:
 			_water_threshold = 0.30
 		Type.MOUNTAINS:
 			_height_noise.frequency = 0.015
-			_amplitude = float(Constants.MAX_TERRAIN_LEVEL)  # ~48 m peaks
+			# Held at 16 rather than the ceiling: the preset is what it always was,
+			# and raising the ceiling is for hand-sculpted mountains, not for making
+			# every Mountains map twice as tall as the one someone already built.
+			_amplitude = 16.0   # ~48 m peaks
 			_water_threshold = 9.0
 
 

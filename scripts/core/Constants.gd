@@ -14,8 +14,15 @@ const CELL_SIZE: float = 8.0
 const ELEVATION_STEP: float = 3.0
 
 ## Maximum terrain height in levels (one level = one ramp = ELEVATION_STEP).
-## Tall enough for real mountains (16 * 3 m = 48 m).
-const MAX_TERRAIN_LEVEL: int = 16
+## 32 * 3 m = 96 m of relief, which a real mountain pass needs: 48 m could not
+## stack a hairpin road high enough to read as a climb at all.
+const MAX_TERRAIN_LEVEL: int = 32
+
+## Where the ground colour ramp tops out, in levels. Held at the old ceiling so
+## raising MAX_TERRAIN_LEVEL does not repaint every existing track: green still
+## turns to rock and then to snow at the same heights it always did, and anything
+## above simply stays snow.
+const COLOR_TOP_LEVEL: int = 16
 
 # --- Physics ---
 

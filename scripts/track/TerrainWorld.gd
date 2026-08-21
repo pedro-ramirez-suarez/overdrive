@@ -380,7 +380,7 @@ static func _tri(st: SurfaceTool, faces: PackedVector3Array, a: Vector3, b: Vect
 static func _height_color(y: float) -> Color:
 	if y < -0.6:
 		return Color(0.26, 0.22, 0.14)  # lake bed
-	var t: float = clampf(y / (Constants.MAX_TERRAIN_LEVEL * Constants.ELEVATION_STEP), 0.0, 1.0)
+	var t: float = clampf(y / (Constants.COLOR_TOP_LEVEL * Constants.ELEVATION_STEP), 0.0, 1.0)
 	if t < 0.58:
 		# Deep meadow green -> drier upland green. Covers plains and hills whole.
 		return Color(0.07, 0.22, 0.06).lerp(Color(0.13, 0.26, 0.09), t / 0.58)

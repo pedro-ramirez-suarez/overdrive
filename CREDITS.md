@@ -37,6 +37,9 @@ endorsed by any circuit, race or organiser:
 - **Autódromo Hermanos Ramírez** — the circuit in the Magdalena Mixhuca park,
   Mexico City.
 - **Baytona Oval** — the banked tri-oval at Daytona Beach, Florida.
+- **Stelvia Pass** — the top of the Stelvio Pass in South Tyrol, Italy: its
+  hairpins climbed for real, then a road of the generator's own making to bring
+  the lap home.
 
 - Road and circuit geometry from **OpenStreetMap** — © OpenStreetMap
   contributors, made available under the **Open Database Licence (ODbL 1.0)**.

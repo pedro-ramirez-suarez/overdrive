@@ -15,8 +15,14 @@ func _ready() -> void:
 	col.add_child(_slider_row("Master", "Master"))
 	col.add_child(_slider_row("SFX", "SFX"))
 	col.add_child(_slider_row("Music", "Music"))
+
+	col.add_child(MenuUI.label("Challenges", 24, MenuUI.ACCENT))
+	col.add_child(_name_row())
+
 	col.add_child(MenuUI.button("Back", func() -> void:
 		AudioManager.save_settings()
+		if _name_edit != null:
+			Challenge.save_author(_name_edit.text)
 		get_tree().change_scene_to_file(MAIN), "back"))
 
 
@@ -50,6 +56,23 @@ func _fullscreen_row() -> HBoxContainer:
 
 
 var _res_drop: OptionButton
+var _name_edit: LineEdit
+
+
+## The name that goes on a challenge you send someone. There are no accounts here
+## and nothing is read off the system — this is only what you want to be called on
+## a file you hand to a friend.
+func _name_row() -> HBoxContainer:
+	var row := _row("Your name")
+	_name_edit = LineEdit.new()
+	_name_edit.text = Challenge.saved_author()
+	_name_edit.placeholder_text = "shown on challenges you save"
+	_name_edit.max_length = Challenge.MAX_NAME
+	_name_edit.custom_minimum_size = Vector2(280, 0)
+	_name_edit.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	_name_edit.text_submitted.connect(func(t: String) -> void: Challenge.save_author(t))
+	row.add_child(_name_edit)
+	return row
 
 
 func _row(text: String) -> HBoxContainer:

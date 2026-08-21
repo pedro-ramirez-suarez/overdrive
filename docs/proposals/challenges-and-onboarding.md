@@ -1,7 +1,9 @@
 # Proposal — Shareable challenges & editor onboarding
 
-Status: **Proposed.** Neither is built. Written ahead of the open-source release,
-when strangers will meet this game with no context.
+Status: **Part 1 is built** — see [ADR 0007](../decisions/0007-shareable-challenges.md)
+for what shipped and how it differs from the spec below. **Part 2 is still
+proposed.** Written ahead of the open-source release, when strangers will meet
+this game with no context.
 
 Two features, unrelated in code, related in purpose. The editor is the star of the
 show, and right now nothing carries what you build in it to anyone else, and
@@ -14,6 +16,9 @@ reach into the race and the track list.
 ---
 
 # 1. Shareable challenges
+
+**Built.** [ADR 0007](../decisions/0007-shareable-challenges.md) records what was
+decided, including answers to the open questions at the end of this section.
 
 ## What it is
 

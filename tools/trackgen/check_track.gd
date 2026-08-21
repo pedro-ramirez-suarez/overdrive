@@ -9,6 +9,10 @@ extends Node
 ##
 ##   godot --headless --path . tools/trackgen/check_track.tscn -- tracks/zuzuka.json
 
+## Pieces whose road is allowed to stop: the overpass keeps a stub of road under
+## its deck even where nothing crosses, and a jump ramp is supposed to end in air.
+const OPEN_BY_DESIGN := ["overpass", "jump"]
+
 func _ready() -> void:
 	var lib := TileLibrary.new()
 	lib.build()
@@ -27,6 +31,32 @@ func _ready() -> void:
 	print(data["name"], ": ", anchors.size(), " tiles, route ", route.size(),
 		"  ", "COMPLETE" if route.size() >= anchors.size() else "SHORT -- the lap breaks")
 	print("  lap ", int(RacePath.route_length(grid, lib)), " m")
+
+	# Road that stops. RacePath can leap a gap -- that is what jump ramps are for --
+	# so a complete route does not prove the pieces actually join. Every socket with
+	# road on it should meet another one, and a track with open ends has a hole in
+	# it somewhere, however well the lap walks.
+	var open_ends := 0
+	var by_design := 0
+	for cell in grid.tiles:
+		for dir in range(4):
+			var s: Dictionary = grid.get_socket(cell, dir)
+			if s.is_empty() or not s.has_road:
+				continue
+			if grid.cells_connected(cell, cell + TrackGrid.OFFSETS[dir]):
+				continue
+			# Some pieces are meant to have road going nowhere: an overpass carries a
+			# stub of road under its deck whether or not anything crosses there, and a
+			# jump ramp ends in mid-air on purpose.
+			if String(grid.get_placed(cell).def_id) in OPEN_BY_DESIGN:
+				by_design += 1
+				continue
+			open_ends += 1
+			if open_ends <= 8:
+				print("    road stops at ", cell, " (", grid.get_placed(cell).def_id,
+					") facing ", ["N", "E", "S", "W"][dir])
+	print("  open road ends: ", open_ends,
+		"" if by_design == 0 else "  (%d more under bridges and off jumps, as intended)" % by_design)
 
 	# Terrain corners are flattened to the highest tile touching them, so ground
 	# standing over a tile means the road is buried in its own verge.

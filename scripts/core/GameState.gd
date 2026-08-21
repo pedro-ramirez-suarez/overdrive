@@ -31,6 +31,29 @@ var return_scene: String = "res://scenes/ui/TrackSelect.tscn"
 # Most recent recorded race, for the replay scene (M5).
 var last_replay: Replay = null
 
+## Challenge filed against the selected track, if there is one — set by track
+## select when a track is highlighted, read by the race to decide whose ghost to
+## put on the road. Null means there is no challenge to race.
+var active_challenge: Challenge = null
+## Race the challenge ghost rather than your own best lap. Only means anything
+## while `active_challenge` is set; the toggle for it lives on track select.
+var race_challenge_ghost: bool = true
+## A challenge has been accepted and its track is loaded, so the only thing left
+## to choose is a car: car select starts the race itself rather than sending the
+## player on to pick a track they have already been given.
+var challenge_race_pending: bool = false
+
+
+## Index in the roster of the car called `name`, or -1. Used to put a challenge's
+## car under the cursor — the challenge suggests it, it does not impose it.
+func car_index_named(name: String) -> int:
+	if name.strip_edges() == "":
+		return -1
+	for i in range(roster.size()):
+		if roster[i].display_name == name:
+			return i
+	return -1
+
 
 func _ready() -> void:
 	library = TileLibrary.new()

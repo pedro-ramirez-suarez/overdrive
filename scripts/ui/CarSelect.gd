@@ -4,6 +4,7 @@ extends Control
 
 const TRACK_SELECT := "res://scenes/ui/TrackSelect.tscn"
 const MAIN := "res://scenes/ui/MainMenu.tscn"
+const RACE := "res://scenes/race/Race.tscn"
 
 var _index: int = 0
 var _buttons: Array[Button] = []
@@ -35,6 +36,21 @@ func _ready() -> void:
 	title.add_theme_color_override("font_color", MenuUI.TEXT)
 	root.add_child(title)
 
+	# Arriving here with a challenge accepted: say whose lap is waiting and what
+	# they drove, and start on that car. Nothing is locked — beating a time in a
+	# different car is a fair thing to want to do, and the results say so.
+	var challenge: Challenge = GameState.active_challenge if GameState.challenge_race_pending else null
+	if challenge != null:
+		var suggested := GameState.car_index_named(challenge.car)
+		if suggested >= 0:
+			_index = suggested
+		var who: String = challenge.author if challenge.author != "" else "Someone"
+		var line := "%s's challenge on %s — %s" % [
+			who, GameState.current_track_name, LapTimer.format(challenge.lap_time)]
+		if challenge.car != "":
+			line += ", set in a %s" % challenge.car
+		root.add_child(MenuUI.label(line, 18, MenuUI.MUTED))
+
 	var body := HBoxContainer.new()
 	body.add_theme_constant_override("separation", 22)
 	body.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -45,8 +61,17 @@ func _ready() -> void:
 
 	var nav := HBoxContainer.new()
 	nav.add_theme_constant_override("separation", 12)
-	var back := MenuUI.button("Back", func() -> void: get_tree().change_scene_to_file(MAIN), "back")
-	var next := MenuUI.button("Choose Track", func() -> void: get_tree().change_scene_to_file(TRACK_SELECT), "play", true)
+	var back := MenuUI.button("Back", func() -> void:
+		GameState.challenge_race_pending = false
+		get_tree().change_scene_to_file(MAIN), "back")
+	var racing_now: bool = GameState.challenge_race_pending
+	var next := MenuUI.button("Race" if racing_now else "Choose Track", func() -> void:
+		if racing_now:
+			GameState.challenge_race_pending = false
+			GameState.return_scene = MAIN
+			get_tree().change_scene_to_file(RACE)
+		else:
+			get_tree().change_scene_to_file(TRACK_SELECT), "play", true)
 	back.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	next.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	nav.add_child(back)

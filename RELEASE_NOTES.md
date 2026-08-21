@@ -22,6 +22,12 @@ Made with the Godot Engine 4.7.
   of day, weather — and even race the circuit **in reverse**.
 - **Beat your best.** Per-track best-lap and best-time records, medals against a par
   time, and a translucent **ghost car** replaying your fastest run alongside you.
+- **Challenges.** Pack a track, the ghost of a lap on it and the time to beat into one
+  file, send it to someone, and race their line on a track they have never seen. Press
+  **S** on the results screen to make one; **Challenge** on the main menu — or **Import…**
+  on the track list — to take one in.
+  `examples/crosswind_circuit.ovc` is one to try — its circuit is deliberately not in
+  the track list.
 - **Replays.** Every race is recorded — scrub, slow-mo, and cycle cameras
   (chase / cockpit / trackside / helicopter), then save it.
 - **28 cars** with distinct handling, a rotating car-select preview with stats, five

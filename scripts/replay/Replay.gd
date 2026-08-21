@@ -73,18 +73,39 @@ func extract_car(index: int) -> Replay:
 
 # --- Persistence ------------------------------------------------------------
 
-func save_to(path: String) -> bool:
-	DirAccess.make_dir_recursive_absolute(SAVE_DIR)
-	var f := FileAccess.open(path, FileAccess.WRITE)
-	if f == null:
-		return false
-	f.store_var({
+## The payload `save_to` writes, as a plain dictionary of built-in types. Split out
+## from the file write so a replay can be carried inside another file — a challenge
+## embeds a ghost this way (see Challenge.gd) without going through a temp file.
+func to_variant() -> Dictionary:
+	return {
 		"magic": MAGIC,
 		"fps": fps,
 		"cars": car_infos,
 		"positions": positions,
 		"rotations": rotations,
-	})
+	}
+
+
+## Rebuild from `to_variant` output, or null if it is not that. Shape only: this is
+## the trusting half, used on our own files. Anything arriving from outside goes
+## through Challenge's checks first.
+static func from_variant(data: Variant) -> Replay:
+	if typeof(data) != TYPE_DICTIONARY or (data as Dictionary).get("magic", "") != MAGIC:
+		return null
+	var r := Replay.new()
+	r.fps = data.get("fps", 60.0)
+	r.car_infos = data.get("cars", [])
+	r.positions = data.get("positions", [])
+	r.rotations = data.get("rotations", [])
+	return r
+
+
+func save_to(path: String) -> bool:
+	DirAccess.make_dir_recursive_absolute(SAVE_DIR)
+	var f := FileAccess.open(path, FileAccess.WRITE)
+	if f == null:
+		return false
+	f.store_var(to_variant())
 	f.close()
 	return true
 
@@ -95,16 +116,11 @@ static func load_from(path: String) -> Replay:
 	var f := FileAccess.open(path, FileAccess.READ)
 	if f == null:
 		return null
-	var data: Variant = f.get_var()
+	# allow_objects stays false: a replay is numbers, and a file that asks to
+	# instantiate something is not one.
+	var data: Variant = f.get_var(false)
 	f.close()
-	if typeof(data) != TYPE_DICTIONARY or data.get("magic", "") != MAGIC:
-		return null
-	var r := Replay.new()
-	r.fps = data.get("fps", 60.0)
-	r.car_infos = data.get("cars", [])
-	r.positions = data.get("positions", [])
-	r.rotations = data.get("rotations", [])
-	return r
+	return from_variant(data)
 
 
 ## A default timestamped save path under the replay directory.

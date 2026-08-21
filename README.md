@@ -29,6 +29,8 @@ Made with the [Godot Engine](https://godotengine.org) 4.7.
   (chase / cockpit / trackside / helicopter), then save it.
 - **28 cars** with distinct handling, a rotating car-select preview, and a live
   arc speedometer while you drive.
+- **Challenges** — pack a track, a ghost lap and the time to beat into one file,
+  send it to someone, and race their line on a track they have never seen.
 - **Play your way** — keyboard or Xbox/Bluetooth controller, in the game *and* the
   editor.
 - **Thirteen tracks to start** — five hand-built stunt circuits, plus eight
@@ -111,6 +113,48 @@ route data, and the same tool will lay out somewhere new if you point it at a ma
 extract. Map data is © OpenStreetMap contributors under the ODbL — see
 [`CREDITS.md`](CREDITS.md), and keep the attribution with any build that ships
 these tracks.
+
+## Challenges
+
+A **challenge** is one file holding a track, a ghost lap driven on it, and the
+time to beat. Send someone a `.ovc` and they can race your line without having
+the track — importing it installs the track and puts your translucent car on the
+road beside them.
+
+- **Try one:** main menu → **Challenge** → [`examples/crosswind_circuit.ovc`](examples/crosswind_circuit.ovc)
+  → **Race it**. That circuit is not in the track list, so importing it is the
+  real thing: a challenge arriving for a track you have never seen. (Track select
+  has an **Import…** button too — both doors take either kind of file.)
+- **Make one:** finish a race and press **S** on the results screen. The file
+  lands in your user folder and the path is shown. Set the name it goes out under
+  in Settings.
+- **Race one:** a track with a challenge says so in the track list, and the race
+  setup panel gets a toggle to chase the challenge ghost or your own best lap. The
+  car it was set in is put under your cursor on the car screen — a suggestion, not
+  a rule; beat it in whatever you like and the results say which car was whose.
+
+A challenge is checked hard on the way in — it is a file from someone else, after
+all — and refused with a reason if it is damaged, tampered with, or uses a track
+piece this build doesn't have. What it is not is verified: anyone can write one,
+there is no leaderboard here, and it is meant to pass between people who know
+each other. See [ADR 0007](docs/decisions/0007-shareable-challenges.md).
+
+## Tests
+
+Headless, from the project root:
+
+```bash
+godot --headless --path . tests/challenge_test.tscn
+```
+
+`challenge_test` covers the challenge file format and what it does with files it
+should refuse — a smuggled object, a tampered track, a ghost full of infinities.
+`challenge_flow_test` walks the whole feature the way a player would: import a
+challenge for a track that isn't installed, see it on track select, and start a
+race that puts the stranger's ghost on the road. Both clean up after themselves.
+
+There is also a check for generated tracks — see
+[`tools/trackgen/`](tools/trackgen/README.md).
 
 ## Cars & assets
 

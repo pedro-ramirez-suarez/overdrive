@@ -140,7 +140,9 @@ static func button(text: String, on_pressed: Callable, icon_id: String = "", pri
 ## reveal it. `on_ok` runs on confirm; the overlay hides itself on cancel and runs
 ## `on_cancel`. Uses PROCESS_MODE_ALWAYS so its buttons work while the game is
 ## paused behind it.
-static func confirm_overlay(message: String, ok_text: String, on_ok: Callable, on_cancel: Callable = func() -> void: pass) -> Control:
+static func confirm_overlay(message: String, ok_text: String, on_ok: Callable,
+		on_cancel: Callable = func() -> void: pass,
+		cancel_text: String = "Cancel", ok_icon: String = "exit") -> Control:
 	var root := Control.new()
 	root.set_anchors_preset(Control.PRESET_FULL_RECT)
 	root.theme = build_theme()
@@ -176,10 +178,10 @@ static func confirm_overlay(message: String, ok_text: String, on_ok: Callable, o
 
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 12)
-	var cancel := button("Cancel", func() -> void:
+	var cancel := button(cancel_text, func() -> void:
 		root.hide()
 		on_cancel.call(), "back")
-	var ok := button(ok_text, on_ok, "exit", true)
+	var ok := button(ok_text, on_ok, ok_icon, true)
 	cancel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	ok.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	row.add_child(cancel)

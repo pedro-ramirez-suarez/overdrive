@@ -12,6 +12,10 @@ var _preview: TrackPreview
 var _info: Label
 var _delete_btn: Button
 var _confirm: ConfirmationDialog
+## Row of the "race the challenge ghost" toggle, shown only for a track that has
+## a challenge; and the overlay that offers to race one straight after importing.
+var _ghost_row: Control
+var _import_overlay: Control
 ## Index into `_tracks` of the highlighted entry, or -1.
 var _selected: int = -1
 
@@ -101,25 +105,40 @@ func _setup_panel() -> Control:
 	col.add_child(steppers)
 
 	col.add_child(_reverse_toggle())
+	col.add_child(_ghost_toggle())
 	col.add_child(_atmosphere_bar())
 	return panel
 
 
-## Toggle for racing the circuit backwards (the "wrong way" round). A hand-drawn
-## high-contrast checkbox: a native CheckBox/CheckButton either vanished into the
-## dark panel (switch pill) or picked up the theme's button box and read as a label.
-## This is a plain toggle button with NO box of its own, its icon a big square that
-## is hollow-with-a-muted-border when off and filled solid accent-red when on — so
-## the state is unmistakable.
+## Toggle for racing the circuit backwards (the "wrong way" round).
 func _reverse_toggle() -> Control:
-	var row := _labelled_row("Direction")
+	return _toggle_row("Direction", "Reverse (wrong way)", GameState.race_reversed,
+		func(on: bool) -> void: GameState.race_reversed = on)
+
+
+## Whose ghost to race, when the selected track has a challenge filed against it.
+## Hidden entirely when it does not — there is nothing to choose between.
+func _ghost_toggle() -> Control:
+	_ghost_row = _toggle_row("Ghost", "Race the challenge ghost", GameState.race_challenge_ghost,
+		func(on: bool) -> void: GameState.race_challenge_ghost = on)
+	_ghost_row.visible = false
+	return _ghost_row
+
+
+## A hand-drawn high-contrast checkbox: a native CheckBox/CheckButton either
+## vanished into the dark panel (switch pill) or picked up the theme's button box
+## and read as a label. This is a plain toggle button with NO box of its own, its
+## icon a big square that is hollow-with-a-muted-border when off and filled solid
+## accent-red when on — so the state is unmistakable.
+func _toggle_row(label: String, text: String, initial: bool, on_change: Callable) -> Control:
+	var row := _labelled_row(label)
 	var off_icon := _square_icon(false)
 	var on_icon := _square_icon(true)
 
 	var check := Button.new()
 	check.toggle_mode = true
-	check.text = "Reverse (wrong way)"
-	check.button_pressed = GameState.race_reversed
+	check.text = text
+	check.button_pressed = initial
 	check.icon = on_icon if check.button_pressed else off_icon
 	check.alignment = HORIZONTAL_ALIGNMENT_LEFT
 	check.size_flags_vertical = Control.SIZE_SHRINK_CENTER
@@ -134,7 +153,7 @@ func _reverse_toggle() -> Control:
 	for state in ["normal", "hover", "pressed", "focus"]:
 		check.add_theme_stylebox_override(state, StyleBoxEmpty.new())
 	check.toggled.connect(func(on: bool) -> void:
-		GameState.race_reversed = on
+		on_change.call(on)
 		check.icon = on_icon if on else off_icon)
 	row.add_child(check)
 	return row
@@ -301,6 +320,9 @@ func _build_list_pane() -> Control:
 	pane.add_child(MenuUI.button("Race", func() -> void: _go(RACE), "play", true))
 	pane.add_child(MenuUI.button("Edit", func() -> void: _go(EDITOR), "edit"))
 	pane.add_child(MenuUI.button("New", func() -> void: _new_track(), "plus"))
+	# Someone who was sent a track or a challenge comes looking here first, so the
+	# door is on this screen rather than only inside the editor.
+	pane.add_child(MenuUI.button("Import…", _open_import_dialog, "plus"))
 
 	_delete_btn = MenuUI.button("Delete", _ask_delete, "erase")
 	_delete_btn.disabled = true
@@ -372,6 +394,8 @@ func _on_selected(index: int) -> void:
 		var medal: int = Records.medal(best_lap, route_len) if route_len > 0.0 else Records.Medal.NONE
 		var glyph: String = Records.MEDAL_GLYPHS[medal]
 		_info.text += "\nBest lap  %s   %s" % [LapTimer.format(best_lap), glyph]
+
+	_apply_challenge(result.name, entry.path)
 	# Bundled tracks ship with the game; deleting one is not recoverable.
 	_delete_btn.disabled = not TrackSerializer.is_in_library(entry.path)
 
@@ -386,6 +410,68 @@ func _go(scene: String) -> void:
 	if scene == RACE:
 		GameState.return_scene = "res://scenes/ui/TrackSelect.tscn"
 	get_tree().change_scene_to_file(scene)
+
+
+## Hand the race whichever challenge is filed against this track, and say so in
+## the info panel. A challenge whose ghost was set on a different version of the
+## track keeps its target time but loses its ghost: the recorded car would drive
+## through scenery that has since moved.
+func _apply_challenge(track_name: String, track_path: String) -> void:
+	var c := Challenge.active_for(track_name)
+	GameState.active_challenge = c
+	if _ghost_row != null:
+		_ghost_row.visible = c != null
+	if c == null:
+		return
+	_info.text += "\nChallenge  %s" % c.summary()
+	if c.note != "":
+		_info.text += "   \"%s\"" % c.note
+	if not c.fits_track_file(track_path):
+		_info.text += "\n(set on a different version of this track — no ghost)"
+
+
+# --- Importing --------------------------------------------------------------
+
+func _open_import_dialog() -> void:
+	ImportFlow.open_dialog(self, "Import a challenge or a track", _import_file)
+
+
+func _import_file(path: String) -> void:
+	var result := ImportFlow.take(path)
+	if not result.get("ok", false):
+		_show_message("Not imported", String(result.get("error", "")))
+		return
+	# Select what just arrived, so the panel on the left is already showing it.
+	_refresh_list(String(result.get("track_path", "")))
+	if String(result.get("kind", "")) == "challenge":
+		_offer_race(ImportFlow.describe(result))
+	else:
+		_show_message("Track imported", ImportFlow.describe(result))
+
+
+## The "you've got a challenge — want to drive it now?" step. Racing is one button
+## away, because that is the only thing anyone wants to do next.
+func _offer_race(message: String) -> void:
+	if _import_overlay != null:
+		_import_overlay.queue_free()
+	_import_overlay = MenuUI.confirm_overlay(message, "Race it",
+		func() -> void:
+			_import_overlay.hide()
+			ImportFlow.arm_race(GameState.active_challenge)
+			_go(RACE),
+		func() -> void: pass, "Later", "play")
+	add_child(_import_overlay)
+	_import_overlay.show()
+
+
+func _show_message(title: String, message: String) -> void:
+	var dlg := AcceptDialog.new()
+	dlg.title = title
+	dlg.dialog_text = message
+	dlg.confirmed.connect(dlg.queue_free)
+	dlg.canceled.connect(dlg.queue_free)
+	add_child(dlg)
+	dlg.popup_centered()
 
 
 func _new_track() -> void:
@@ -411,6 +497,8 @@ func _do_delete() -> void:
 	var entry: Dictionary = _tracks[_selected]
 	var track_name: String = entry.name
 	if TrackSerializer.delete_track(entry.path):
+		# A challenge without its track is a file nobody can race.
+		Challenge.remove_for(track_name)
 		_refresh_list()
 		_info.text = "Deleted '%s'." % track_name
 	else:

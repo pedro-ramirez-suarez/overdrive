@@ -29,7 +29,12 @@ const BUNDLED := [
 const NONE := Vector2i(2147483647, 2147483647)
 
 
-static func to_dict(grid: TrackGrid, lib: TileLibrary, track_name: String, author: String) -> Dictionary:
+## `terrain` defaults to the terrain the game currently has loaded, which is what
+## every save wants. Pass one explicitly to serialize a track that is not the one
+## on screen — checking a challenge's fingerprint does that, and reading the global
+## there would fingerprint the wrong ground.
+static func to_dict(grid: TrackGrid, lib: TileLibrary, track_name: String, author: String,
+		terrain: Terrain = null) -> Dictionary:
 	var cells: Array = []
 	for cell in grid.tiles:
 		var p: PlacedTile = grid.tiles[cell]
@@ -47,16 +52,17 @@ static func to_dict(grid: TrackGrid, lib: TileLibrary, track_name: String, autho
 		})
 	var start: Vector2i = lib.find_start_cell(grid)
 	var start_arr: Array = [start.x, start.y] if start != NONE else [0, 0]
+	var t: Terrain = terrain if terrain != null else GameState.current_terrain
 	var terrain_data: Variant = null
-	if GameState.current_terrain != null:
+	if t != null:
 		terrain_data = {
-			"type": GameState.current_terrain.type,
-			"seed": GameState.current_terrain.seed_value,
+			"type": t.type,
+			"seed": t.seed_value,
 			# Hand-sculpted corners, flat [i, j, level, ...]. Absent/empty means the
 			# terrain is exactly what the noise preset generates.
-			"edits": GameState.current_terrain.edits_to_array(),
+			"edits": t.edits_to_array(),
 			# Hand-placed lakes, flat [cell_x, cell_y, rim_level, ...].
-			"lakes": GameState.current_terrain.lakes_to_array(),
+			"lakes": t.lakes_to_array(),
 		}
 	return {
 		"format": SIGNATURE, "version": VERSION, "name": track_name, "author": author,
@@ -163,12 +169,22 @@ static func is_in_library(path: String) -> bool:
 ## list. Returns the new path, or "" on failure. Names are made unique rather than
 ## overwriting: importing must never quietly destroy a track you already had.
 static func import_track(src_path: String, lib: TileLibrary) -> String:
-	var result := load_track(src_path, lib)
+	var data: Variant = JSON.parse_string(FileAccess.get_file_as_string(src_path))
+	if typeof(data) != TYPE_DICTIONARY or validation_error(data) != "":
+		return ""
+	return import_dict(data, lib, src_path.get_file().get_basename())
+
+
+## The same, for a track that arrived inside another file rather than as one — a
+## challenge carries its track this way. `fallback_name` is used only when the
+## track does not name itself.
+static func import_dict(data: Dictionary, lib: TileLibrary, fallback_name: String = "Imported track") -> String:
+	var result := from_dict(data, lib)
 	if result.is_empty():
 		return ""
 	var track_name: String = result.get("name", "")
 	if track_name.strip_edges() == "":
-		track_name = src_path.get_file().get_basename()
+		track_name = fallback_name
 	var dest := _unique_path(track_name)
 	# Re-serialize rather than copying the bytes: it validates the file and
 	# normalizes anything an older version wrote.

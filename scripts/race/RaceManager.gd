@@ -59,6 +59,10 @@ var _loop_flags: Dictionary = {}
 ## recorded run of this track, and the replay that drives it.
 var _ghost_car: ArcadeCar
 var _ghost_replay: Replay
+## True when the ghost on the road is a challenge someone sent, not your own best.
+var _ghost_is_challenge: bool = false
+## The challenge being raced, once it has been confirmed to belong to this track.
+var _challenge: Challenge = null
 
 # HUD
 var _countdown_label: Label
@@ -266,7 +270,7 @@ func _add_skidmarks() -> void:
 ## is a purely visual, transform-driven prop with no collision, so it never touches
 ## the player or the checkpoints. Hidden until the race starts.
 func _spawn_ghost() -> void:
-	_ghost_replay = Records.load_ghost(GameState.current_track_name)
+	_ghost_replay = _chosen_ghost()
 	if _ghost_replay == null or _ghost_replay.frame_count() < 2:
 		_ghost_replay = null
 		return
@@ -286,10 +290,38 @@ func _spawn_ghost() -> void:
 	_ghost_car.visible = false
 
 
+## Which run to put on the road: the challenge someone sent you, or your own best.
+##
+## Only one of them drives. Two translucent cars through the same corner is noise,
+## and a challenge is meant to be a single rival to chase. The challenge wins while
+## it is switched on and its ghost actually belongs to this track — a ghost is
+## recorded world positions, so a track edited since would have it driving through
+## the scenery.
+func _chosen_ghost() -> Replay:
+	var c: Challenge = GameState.active_challenge
+	# Whether the challenge belongs to THIS track is settled once, here. Anything
+	# else — a test drive straight out of the editor, a different track picked since
+	# — leaves a challenge armed that has nothing to do with what is being driven,
+	# and its time must not judge this run either.
+	if c != null and c.fits_grid(GameState.current_grid, GameState.library,
+			GameState.current_track_name, GameState.current_terrain):
+		_challenge = c
+		if GameState.race_challenge_ghost and c.ghost != null:
+			_ghost_is_challenge = true
+			return c.ghost
+	return Records.load_ghost(GameState.current_track_name)
+
+
 ## Fade every mesh under `node` so the ghost car is see-through.
 func _make_ghostly(node: Node) -> void:
 	if node is GeometryInstance3D:
-		(node as GeometryInstance3D).transparency = 0.6
+		var g := node as GeometryInstance3D
+		# Faint enough to see the road and your own line through it. At 0.6 it still
+		# read as a solid car you were about to hit.
+		g.transparency = 0.82
+		# And it casts no shadow: a shadow is the one thing that makes a translucent
+		# car look present rather than remembered.
+		g.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	for c in node.get_children():
 		_make_ghostly(c)
 
@@ -924,10 +956,69 @@ func _show_results(beat: Dictionary = {"lap": false, "race": false}) -> void:
 		if beat.get("lap", false):
 			lines.append("★ NEW BEST LAP ★")
 
+	# How the run measured up to the challenge, if one was being raced. Driving the
+	# circuit the other way round is not the same lap, so it is not compared.
+	var c: Challenge = _challenge
+	if c != null and c.reversed != GameState.race_reversed:
+		c = null
+	if c != null and c.lap_time > 0.0 and _player != null and _player.timer.best_lap > 0.0:
+		var who: String = c.author if c.author != "" else "the challenge"
+		var delta: float = _player.timer.best_lap - c.lap_time
+		# A time set in another car is not the same measurement, so say which car it
+		# was rather than report the comparison as if it were like for like.
+		var mine: String = GameState.selected_car.display_name if GameState.selected_car != null else ""
+		var other_car: String = "" if c.car == "" or c.car == mine else "   (they drove a %s)" % c.car
+		lines.append("")
+		if delta <= 0.0:
+			lines.append("★ CHALLENGE BEATEN ★   %.2f s inside %s%s" % [-delta, who, other_car])
+		else:
+			lines.append("%.2f s short of %s (%s)%s" % [
+				delta, who, LapTimer.format(c.lap_time), other_car])
+
 	lines.append("")
 	var can_replay: bool = GameState.last_replay != null
-	lines.append("Enter: watch replay      Esc: leave race" if can_replay else "Esc: leave race")
+	var keys: Array[String] = []
+	if can_replay:
+		keys.append("Enter: watch replay")
+	if _can_export_challenge():
+		keys.append("S: save as challenge")
+	keys.append("Esc: leave race")
+	lines.append("      ".join(keys))
 	_show_results_text("\n".join(lines))
+
+
+# --- Sharing this run -------------------------------------------------------
+
+func _can_export_challenge() -> bool:
+	return _player != null and _player.finished and GameState.last_replay != null \
+		and _player.timer.best_lap > 0.0
+
+
+## Write the run just driven as a challenge file: this track, this lap, and the
+## ghost of it, in one file to send someone. The run just driven is the one saved,
+## not the personal best — it is the one the player has in mind at this moment, and
+## the best is always still there to race again.
+func _export_challenge() -> void:
+	if not _can_export_challenge():
+		return
+	var track_data := TrackSerializer.to_dict(GameState.current_grid, GameState.library,
+		GameState.current_track_name, "", GameState.current_terrain)
+	var ghost: Replay = GameState.last_replay.extract_car(0)
+	var c := Challenge.from_run(track_data, ghost, {
+		"author": Challenge.saved_author(),
+		"car": GameState.selected_car.display_name if GameState.selected_car != null else "",
+		"lap_time": _player.timer.best_lap,
+		"race_time": _player.finish_time,
+		"laps": GameState.race_laps,
+		"reversed": GameState.race_reversed,
+		"created": int(Time.get_unix_time_from_system()),
+	})
+	var path := Challenge.export_path(GameState.current_track_name, _player.timer.best_lap)
+	if not c.save_to(path):
+		_show_results_text(_results_label.text + "\n\nThe challenge could not be saved.")
+		return
+	_show_results_text("%s\n\nChallenge saved:\n%s" % [
+		_results_label.text, ProjectSettings.globalize_path(path)])
 
 
 ## Fill the results panel with `text` and reveal it. Also used for the "no drivable
@@ -1004,6 +1095,9 @@ func _unhandled_input(event: InputEvent) -> void:
 			_quit_dialog.show()
 	elif event.is_action_pressed("ui_accept") and _phase == Phase.FINISHED and GameState.last_replay != null:
 		get_tree().change_scene_to_file(REPLAY_SCENE)
+	elif _phase == Phase.FINISHED and event is InputEventKey and event.pressed \
+			and (event as InputEventKey).keycode == KEY_S:
+		_export_challenge()
 	elif event.is_action_pressed("ui_accept") and _phase == Phase.COUNTDOWN:
 		# Skip the wait: drop the countdown to a brief "GO!" flash.
 		_countdown = minf(_countdown, 0.4)

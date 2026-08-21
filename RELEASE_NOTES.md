@@ -13,7 +13,8 @@ Made with the Godot Engine 4.7.
   on a grid, with live green/yellow/red connection feedback, undo/redo, and one-click
   Test Drive. Guardrails keep you on the helix and overpass decks.
 - **Sculptable terrain.** Flat, Plains, Hills, Lakes or Mountains (with re-roll), plus
-  raise / lower / level / lake tools. The track drapes over the ground.
+  raise / lower / level / lake tools over 96 m of vertical range — enough for a real
+  mountain pass. The track drapes over the ground.
 - **Real stunt driving.** Track-relative gravity pins the car through loops and rolls;
   ramps launch you into a natural arc; banked curves let you carry speed.
 - **Race weekend, your way.** Countdown start, AI opponents, laps and checkpoints,
@@ -27,8 +28,21 @@ Made with the Godot Engine 4.7.
   camera angles (including a close "Action" cam), and a live arc speedometer.
 - **Play how you like.** Full keyboard **and** Xbox / Bluetooth controller support —
   in the game *and* the editor.
-- **Three tracks to start:** Sample Oval, fast, and Test Track — plus everything you
-  build yourself.
+- **Thirteen tracks to start.** Five are hand-built stunt circuits — Sample Oval, fast,
+  Test Track, Serpentine Ridge and Alpine Pass. The other eight are **inspired by real
+  places**, traced from map data and given the real ground under them: **Tres Marías**
+  (Morelia, Michoacán), **Eifelschleife** (the Eifel forest circuit), **Spaa
+  Francorchant** (the Ardennes), **Zuzuka** (the Japanese figure-of-eight, bridge and
+  all), **Momako** (the Monte Carlo harbour streets, tunnel included), **Autódromo
+  Hermanos Ramírez** (Mexico City), **Baytona Oval** (the Daytona tri-oval) and
+  **Stelvia Pass** (the hairpins of the Stelvio — 84 m of climb, then a long run home).
+  The names are near-misses on purpose: these are interpretations on a grid of 8 m
+  tiles, not reproductions. Plus everything you build yourself.
+- **The track generator ships with the source.** The tool that laid out those eight
+  is in [`tools/trackgen/`](tools/trackgen/README.md): it traces a lap out of
+  OpenStreetMap, fits it to the tile grid, and sculpts the ground from SRTM elevation.
+  Every generated track rebuilds byte for byte from the committed route data, and the
+  same tool will lay out somewhere new if you point it at a map extract.
 
 ## Controls
 
@@ -58,7 +72,10 @@ No installer, no account, no data collected — it's a single self-contained gam
 
 Game code and original assets are **MIT** licensed ([LICENSE](LICENSE)). All car
 models are public-domain (CC0) packs from **Rgsdev** and **Kenney**; the engine is
-**Godot** (MIT). See [CREDITS.md](CREDITS.md).
+**Godot** (MIT). Road geometry for the eight real-world tracks comes from
+**OpenStreetMap** (© OpenStreetMap contributors, ODbL) and ground heights from
+**NASA/USGS SRTM** (public domain) — that attribution has to travel with any build
+that ships them. See [CREDITS.md](CREDITS.md).
 
 ---
 

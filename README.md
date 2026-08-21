@@ -19,7 +19,8 @@ Made with the [Godot Engine](https://godotengine.org) 4.7.
   tunnels and crossroads. Track-relative gravity keeps the car pinned through
   loops and rolls.
 - **Sculptable terrain** — Flat, Plains, Hills, Lakes or Mountains (with re-roll),
-  and raise/lower/level tools; the track drapes over the ground.
+  and raise/lower/level tools over 96 m of vertical range; the track drapes over
+  the ground.
 - **Racing** — countdown start, AI opponents, laps and checkpoints, live position,
   best-lap/best-time records with a "beat your best" ghost car, medals, and a
   wrong-way / off-track warning. Choose lap count, opponents, time of day, weather,
@@ -30,6 +31,9 @@ Made with the [Godot Engine](https://godotengine.org) 4.7.
   arc speedometer while you drive.
 - **Play your way** — keyboard or Xbox/Bluetooth controller, in the game *and* the
   editor.
+- **Thirteen tracks to start** — five hand-built stunt circuits, plus eight
+  [inspired by real places](#tracks) and laid out from map and elevation data —
+  and everything you build yourself.
 
 ## Playing it
 
@@ -76,6 +80,37 @@ From the menu: **Race** (pick a car → pick a track → set laps/opponents → 
 
 To make a raceable track, build a **closed loop** and include a **Start / Finish**
 tile.
+
+## Tracks
+
+Thirteen ship with the game. Five are hand-built stunt circuits — Sample Oval,
+fast, Test Track, Serpentine Ridge and Alpine Pass — the kind of thing the editor
+is for.
+
+**The other eight are inspired by real places.** A generator traces a lap out of
+OpenStreetMap, fits it to the 8 m tile grid, and sculpts the ground under it from
+SRTM elevation data, so the corners and the climbs follow the real ones. Their
+names are deliberately near-misses rather than the real circuit names — these are
+interpretations on a grid of 8 m tiles, not reproductions, and nothing here is
+affiliated with or endorsed by any circuit, race or organiser:
+
+| track | inspired by |
+|---|---|
+| Tres Marías | the boulevard loop around Ciudad Tres Marías, Morelia, Michoacán |
+| Eifelschleife | the long forest circuit in the Eifel, Germany |
+| Spaa Francorchant | the Ardennes road circuit near Francorchamps, Belgium |
+| Zuzuka | the figure-of-eight circuit in Mie Prefecture, Japan — one stretch crosses the other on a bridge |
+| Momako | the harbour street circuit in Monte Carlo, Monaco — tunnel included |
+| Autódromo Hermanos Ramírez | the park circuit in Mexico City, banked |
+| Baytona Oval | the banked tri-oval at Daytona Beach, Florida |
+| Stelvia Pass | the hairpins at the top of the Stelvio Pass, South Tyrol — 84 m of climb, then a long run home |
+
+The generator lives in [`tools/trackgen/`](tools/trackgen/README.md) and is part
+of the repo: every one of those tracks rebuilds byte for byte from the committed
+route data, and the same tool will lay out somewhere new if you point it at a map
+extract. Map data is © OpenStreetMap contributors under the ODbL — see
+[`CREDITS.md`](CREDITS.md), and keep the attribution with any build that ships
+these tracks.
 
 ## Cars & assets
 

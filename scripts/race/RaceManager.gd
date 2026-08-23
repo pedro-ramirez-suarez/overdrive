@@ -69,6 +69,8 @@ var _countdown_label: Label
 var _info_label: Label
 var _results_label: Label
 var _results_panel: Control
+## The standings as composed, so a note can be shown under them and replaced.
+var _results_base: String = ""
 var _wrongway_label: Label
 var _speed_lines: ColorRect
 var _speedo: Speedometer
@@ -981,7 +983,7 @@ func _show_results(beat: Dictionary = {"lap": false, "race": false}) -> void:
 	if can_replay:
 		keys.append("Enter: watch replay")
 	if _can_export_challenge():
-		keys.append("S: save as challenge")
+		keys.append("S: save as challenge…")
 	keys.append("Esc: leave race")
 	lines.append("      ".join(keys))
 	_show_results_text("\n".join(lines))
@@ -1001,6 +1003,33 @@ func _can_export_challenge() -> bool:
 func _export_challenge() -> void:
 	if not _can_export_challenge():
 		return
+	# Ask where it goes. The point of the file is to send it to someone, so the
+	# player picks the folder and the name — a path printed on a results screen is
+	# something to copy out by hand, and half of them land in the game's own data
+	# folder where nobody would think to look.
+	var dlg := FileDialog.new()
+	dlg.file_mode = FileDialog.FILE_MODE_SAVE_FILE
+	dlg.access = FileDialog.ACCESS_FILESYSTEM
+	dlg.filters = PackedStringArray(["*.%s ; Challenge files" % Challenge.EXT])
+	dlg.title = "Save challenge"
+	dlg.use_native_dialog = true
+	dlg.current_dir = Challenge.export_dir()
+	dlg.current_file = Challenge.export_filename(
+		GameState.current_track_name, _player.timer.best_lap)
+	# The results screen can be reached with the tree paused behind it.
+	dlg.process_mode = Node.PROCESS_MODE_ALWAYS
+	dlg.file_selected.connect(_write_challenge)
+	dlg.close_requested.connect(dlg.queue_free)
+	dlg.file_selected.connect(func(_p: String) -> void: dlg.queue_free())
+	add_child(dlg)
+	dlg.popup_centered_ratio(0.7)
+
+
+func _write_challenge(path: String) -> void:
+	if not _can_export_challenge():
+		return
+	if path.get_extension().to_lower() != Challenge.EXT:
+		path += "." + Challenge.EXT
 	var track_data := TrackSerializer.to_dict(GameState.current_grid, GameState.library,
 		GameState.current_track_name, "", GameState.current_terrain)
 	var ghost: Replay = GameState.last_replay.extract_car(0)
@@ -1013,18 +1042,26 @@ func _export_challenge() -> void:
 		"reversed": GameState.race_reversed,
 		"created": int(Time.get_unix_time_from_system()),
 	})
-	var path := Challenge.export_path(GameState.current_track_name, _player.timer.best_lap)
 	if not c.save_to(path):
-		_show_results_text(_results_label.text + "\n\nThe challenge could not be saved.")
+		_show_results_note("The challenge could not be saved there.")
 		return
-	_show_results_text("%s\n\nChallenge saved:\n%s" % [
-		_results_label.text, ProjectSettings.globalize_path(path)])
+	Challenge.remember_export_dir(path.get_base_dir())
+	_show_results_note("Challenge saved:\n%s" % path)
 
 
 ## Fill the results panel with `text` and reveal it. Also used for the "no drivable
 ## loop" message.
 func _show_results_text(text: String) -> void:
+	_results_base = text
 	_results_label.text = text
+	_results_panel.visible = true
+
+
+## A line under the standings -- where a challenge was saved, or why it was not.
+## Replaces the last note rather than stacking under it, so saving twice does not
+## leave the screen reciting both paths.
+func _show_results_note(note: String) -> void:
+	_results_label.text = "%s\n\n%s" % [_results_base, note]
 	_results_panel.visible = true
 
 

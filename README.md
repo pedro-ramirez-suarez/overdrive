@@ -125,9 +125,9 @@ road beside them.
   → **Race it**. That circuit is not in the track list, so importing it is the
   real thing: a challenge arriving for a track you have never seen. (Track select
   has an **Import…** button too — both doors take either kind of file.)
-- **Make one:** finish a race and press **S** on the results screen. The file
-  lands in your user folder and the path is shown. Set the name it goes out under
-  in Settings.
+- **Make one:** finish a race and press **S** on the results screen, then choose
+  where to put it — it opens in your documents folder, and remembers wherever you
+  last saved one. Set the name it goes out under in Settings.
 - **Race one:** a track with a challenge says so in the track list, and the race
   setup panel gets a toggle to chase the challenge ghost or your own best lap. The
   car it was set in is put under your cursor on the car screen — a suggestion, not

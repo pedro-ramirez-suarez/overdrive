@@ -6,8 +6,9 @@ extends Node
 ## Run with:
 ##   godot --headless --path . tests/challenge_flow_test.tscn
 ##
-## It installs into the real track library, because that is the thing being
-## tested, and removes what it installed on the way out.
+## It installs into the real track library, because that is the thing being tested.
+## It removes only what it put there: if the example is already installed, that is
+## someone playing it, and the test leaves their track alone.
 
 const SAMPLE := "res://examples/crosswind_circuit.ovc"
 
@@ -15,6 +16,8 @@ var _passed := 0
 var _failed := 0
 var _track_path := ""
 var _track_name := ""
+## True when this test installed the example itself, and may therefore remove it.
+var _ours := false
 
 
 func _ready() -> void:
@@ -23,14 +26,15 @@ func _ready() -> void:
 
 
 func _run() -> void:
-	var before := TrackSerializer.list_tracks()
-	for entry in before:
-		if String(entry.get("name", "")).begins_with("Crosswind Circuit"):
-			print("SKIPPED: a Crosswind Circuit track is already installed here")
-			get_tree().quit()
-			return
+	# This writes into the player's real library, so it keeps track of what it put
+	# there. If the example is already installed — someone was playing it — the
+	# install reuses their copy, every check below still means something, and the
+	# cleanup at the end leaves their track exactly where it was.
+	var before := {}
+	for entry in TrackSerializer.list_tracks():
+		before[String(entry.get("path", ""))] = true
 
-	# 1. It arrives as a file, for a track this game has never seen.
+	# 1. It arrives as a file, for a track this game may never have seen.
 	var result := Challenge.install(SAMPLE)
 	if result.has("error"):
 		_ok(false, "install: " + String(result["error"]))
@@ -39,8 +43,12 @@ func _run() -> void:
 	var c: Challenge = result["challenge"]
 	_track_path = String(result["track_path"])
 	_track_name = String(result["track_name"])
-	_ok(_track_name == "Crosswind Circuit", "the track keeps its name")
-	_ok(TrackSerializer.list_tracks().size() == before.size() + 1, "the track joins the library")
+	_ours = not before.has(_track_path)
+	_ok(_track_name.begins_with("Crosswind Circuit"), "the track keeps its name")
+	if _ours:
+		_ok(TrackSerializer.list_tracks().size() == before.size() + 1, "the track joins the library")
+	else:
+		print("  (the example is already installed here; leaving it alone)")
 
 	# 2. Track select shows it, and picking it arms the challenge.
 	var select: Control = load("res://scenes/ui/TrackSelect.tscn").instantiate()
@@ -147,10 +155,9 @@ func _ok(cond: bool, what: String) -> void:
 func _finish() -> void:
 	GameState.active_challenge = null
 	GameState.race_challenge_ghost = true
-	if _track_name != "":
+	if _ours:
 		Challenge.remove_for(_track_name)
-	if _track_path != "":
 		TrackSerializer.delete_track(_track_path)
-	_ok(_track_path == "" or not FileAccess.file_exists(_track_path), "the test cleaned up after itself")
+		_ok(not FileAccess.file_exists(_track_path), "the test cleaned up after itself")
 	print("challenge flow: %d passed, %d failed" % [_passed, _failed])
 	get_tree().quit(1 if _failed > 0 else 0)

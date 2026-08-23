@@ -398,11 +398,32 @@ static func has_for(track_name: String) -> bool:
 	return FileAccess.file_exists(path_for(track_name))
 
 
-## Where an exported challenge is written: named for the track and the time, in a
-## folder of their own, so a player can find the file they just made and send it.
-static func export_path(track_name: String, lap: float) -> String:
-	return "%s/%s_%s.%s" % [DIR, slug(track_name),
+## The name to offer for an exported challenge: the track and the time, so a
+## folder of them stays readable and two runs never collide.
+static func export_filename(track_name: String, lap: float) -> String:
+	return "%s_%s.%s" % [slug(track_name),
 		LapTimer.format(lap).replace(":", "m").replace(".", "s"), EXT]
+
+
+## Where the save dialog should open: wherever the player last put one, falling
+## back to their documents folder. A file meant to be sent to someone belongs
+## somewhere they can find it, not buried in the game's own data.
+static func export_dir() -> String:
+	var cfg := ConfigFile.new()
+	if cfg.load(SETTINGS_PATH) == OK:
+		var last := String(cfg.get_value("challenge", "export_dir", ""))
+		if last != "" and DirAccess.dir_exists_absolute(last):
+			return last
+	return OS.get_system_dir(OS.SYSTEM_DIR_DOCUMENTS)
+
+
+static func remember_export_dir(dir: String) -> void:
+	if dir.strip_edges() == "":
+		return
+	var cfg := ConfigFile.new()
+	cfg.load(SETTINGS_PATH)
+	cfg.set_value("challenge", "export_dir", dir)
+	cfg.save(SETTINGS_PATH)
 
 
 # --- The name a challenge goes out under -------------------------------------

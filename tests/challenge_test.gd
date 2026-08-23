@@ -30,6 +30,7 @@ func _ready() -> void:
 		return
 
 	_valid_file_reads(good)
+	_export_defaults()
 	_round_trips(good)
 	_refuses_rubbish()
 	_refuses_objects()
@@ -71,6 +72,19 @@ func _track_is_a_closed_loop(c: Challenge) -> void:
 	_ok(breaks == 0, "the example track joins up all the way round (%d break(s))" % breaks)
 	var route: Array = RacePath.compute(grid, GameState.library)
 	_ok(route.size() >= cells.size(), "and the race can walk every tile of it")
+
+
+## What the save dialog offers: a filename that survives being a filename, and a
+## folder the player will actually find again.
+func _export_defaults() -> void:
+	var name := Challenge.export_filename("Crosswind Circuit", 87.65)
+	_ok(name.ends_with(".ovc"), "the offered name ends in .ovc")
+	_ok(name.contains("crosswind_circuit"), "and is named for the track")
+	for bad in [":", "*", "?", "\"", "<", ">", "|", "/", "\\"]:
+		_ok(not name.contains(bad), "and has no %s in it" % bad)
+	var dir := Challenge.export_dir()
+	_ok(dir != "" and not dir.begins_with("user://"),
+		"the dialog opens somewhere the player can find, not inside the game's data")
 
 
 func _round_trips(c: Challenge) -> void:
@@ -255,22 +269,38 @@ func _fingerprint_survives_the_serializer(c: Challenge) -> void:
 
 ## Installing puts the track in the library; installing the same file again finds
 ## the track already there rather than making a second copy.
+##
+## This one writes into the player's real library, so it is careful about what it
+## is allowed to remove. If the example is ALREADY installed — someone was playing
+## it — the install reuses their copy, and deleting "what the test installed" would
+## delete a track they own. So the test only cleans up a file it can prove it
+## created, and skips the rest rather than touching anything else.
 func _installs_and_reuses(_c: Challenge) -> void:
+	var before := {}
+	for entry in TrackSerializer.list_tracks():
+		before[String(entry.get("path", ""))] = true
+
 	var first := Challenge.install(SAMPLE)
 	if first.has("error"):
 		_ok(false, "installing the example challenge: " + String(first["error"]))
 		return
 	var track_path := String(first["track_path"])
 	var track_name := String(first["track_name"])
-	_ok(not first.get("reused", true), "the first install adds the track")
+	var ours: bool = not before.has(track_path)
 	_ok(FileAccess.file_exists(track_path), "the track is in the library")
 	_ok(Challenge.has_for(track_name), "the challenge is filed against it")
+	if ours:
+		_ok(not first.get("reused", true), "the first install adds the track")
+	else:
+		print("  (the example is already installed here; leaving it alone)")
 
-	var before := TrackSerializer.list_tracks().size()
+	var count := TrackSerializer.list_tracks().size()
 	var second := Challenge.install(SAMPLE)
 	_ok(second.get("reused", false), "installing it again reuses the track")
-	_ok(TrackSerializer.list_tracks().size() == before, "and adds no duplicate")
+	_ok(TrackSerializer.list_tracks().size() == count, "and adds no duplicate")
 
+	if not ours:
+		return
 	# Put the library back exactly as it was found.
 	Challenge.remove_for(track_name)
 	TrackSerializer.delete_track(track_path)

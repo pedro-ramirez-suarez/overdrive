@@ -140,8 +140,12 @@ The rest of it:
   reordering car and track select would have done, without touching the
   back-navigation of four screens.
 - The track's info panel names the challenge under the best-lap line.
-- **S** on the results screen saves the run just driven as a challenge, and shows
-  the path. The run just driven, not the personal best: it is the one the player
+- **S** on the results screen saves the run just driven as a challenge, through a
+  save dialog: the file exists to be sent to someone, so the player picks the
+  folder and the name. A path printed on a results screen is something to copy out
+  by hand, and half of them would land in the game data folder where nobody would
+  think to look. It opens in their documents folder and remembers where they last
+  put one. The run just driven, not the personal best: it is the one the player
   has in mind at that moment, and the best is always still there to race again.
 - Settings has a name field. There are no accounts here and nothing is read off
   the system — it is only what you want to be called on a file you hand a friend.

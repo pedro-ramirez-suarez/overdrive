@@ -19,6 +19,9 @@ func _ready() -> void:
 	col.add_child(MenuUI.label("Challenges", 24, MenuUI.ACCENT))
 	col.add_child(_name_row())
 
+	col.add_child(MenuUI.label("Editor", 24, MenuUI.ACCENT))
+	col.add_child(_tutorial_row())
+
 	col.add_child(MenuUI.button("Back", func() -> void:
 		AudioManager.save_settings()
 		if _name_edit != null:
@@ -57,6 +60,24 @@ func _fullscreen_row() -> HBoxContainer:
 
 var _res_drop: OptionButton
 var _name_edit: LineEdit
+var _tutorial_note: Label
+
+
+## Put the editor's first-run walkthrough back. It only starts on an empty track,
+## so this arms it rather than showing it here.
+func _tutorial_row() -> HBoxContainer:
+	var row := _row("Walkthrough")
+	var btn := MenuUI.button("Show it again next time", func() -> void:
+		EditorTutorial.forget()
+		if _tutorial_note != null:
+			_tutorial_note.text = "It will run the next time you open the editor on an empty track."
+		, "edit")
+	btn.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	row.add_child(btn)
+	_tutorial_note = MenuUI.label("", 15, MenuUI.MUTED)
+	_tutorial_note.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	row.add_child(_tutorial_note)
+	return row
 
 
 ## The name that goes on a challenge you send someone. There are no accounts here

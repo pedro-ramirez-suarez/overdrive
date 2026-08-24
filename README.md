@@ -13,7 +13,8 @@ Made with the [Godot Engine](https://godotengine.org) 4.7.
 ## Features
 
 - **Modular track editor** — place and rotate tiles on a grid with live
-  green/yellow/red connection feedback, undo/redo, and instant Test Drive.
+  green/yellow/red connection feedback, undo/redo, and instant Test Drive. First
+  time in, a six-step walkthrough builds a loop with you and gets you driving it.
 - **Stunt pieces** — vertical loops, a barrel-roll corkscrew, a spiral helix up to
   raised decks, launch ramps, banked curves, overpasses, pipes and half-pipes,
   tunnels and crossroads. Track-relative gravity keeps the car pinned through
@@ -151,7 +152,9 @@ godot --headless --path . tests/challenge_test.tscn
 should refuse — a smuggled object, a tampered track, a ghost full of infinities.
 `challenge_flow_test` walks the whole feature the way a player would: import a
 challenge for a track that isn't installed, see it on track select, and start a
-race that puts the stranger's ghost on the road. Both clean up after themselves.
+race that puts the stranger's ghost on the road. `editor_tutorial_test` walks the
+editor's first-run walkthrough, in order and out of it. They all put back anything
+they touch.
 
 There is also a check for generated tracks — see
 [`tools/trackgen/`](tools/trackgen/README.md).

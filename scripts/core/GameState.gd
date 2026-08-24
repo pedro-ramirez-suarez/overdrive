@@ -43,6 +43,13 @@ var race_challenge_ghost: bool = true
 ## player on to pick a track they have already been given.
 var challenge_race_pending: bool = false
 
+## The editor's first-run walk (see EditorTutorial). It has to survive the test
+## drive its last step asks for, which leaves the editor scene entirely: `active`
+## resumes the walk when the editor comes back, and `finale` is the closing line
+## waiting to be shown once.
+var editor_tutorial_active: bool = false
+var editor_tutorial_finale: bool = false
+
 
 ## Index in the roster of the car called `name`, or -1. Used to put a challenge's
 ## car under the cursor — the challenge suggests it, it does not impose it.

@@ -70,6 +70,12 @@ var _name_edit: LineEdit
 var _loaded_path: String = ""
 var _import_btn: Button
 var _ui_layer: CanvasLayer
+## The first-run walk, its panel, and the buttons it is pointing at.
+var _tutorial: EditorTutorial = null
+var _tutorial_panel: Control = null
+var _test_btn: Button
+var _pulsed: Array = []
+var _pulse_time: float = 0.0
 var _palette_buttons: Array[Button] = []
 var _tool_buttons: Dictionary = {}     # Tool -> Button
 var _terrain_buttons: Dictionary = {}  # Terrain.Type -> Button
@@ -111,6 +117,146 @@ func _ready() -> void:
 	_rebuild_all_props()
 	_refresh_palette_highlight()
 	_update_status()
+	_start_tutorial_if_wanted()
+
+
+# --- The first-run walk ------------------------------------------------------
+# See EditorTutorial. Everything here is presentation: a panel with one sentence
+# in it, and a pulse on whichever button the sentence is talking about. The walk
+# itself only ever reads the grid.
+
+func _start_tutorial_if_wanted() -> void:
+	if GameState.editor_tutorial_finale:
+		# It ended on the test drive that brought us back here. Say the closing line
+		# once, then never again.
+		GameState.editor_tutorial_finale = false
+		_show_tutorial_panel(EditorTutorial.FINALE, 0)
+		return
+	if not EditorTutorial.should_run(_grid):
+		return
+	_tutorial = EditorTutorial.new(_grid, _library)
+	GameState.editor_tutorial_active = true
+	_tutorial.changed.connect(_refresh_tutorial)
+	_tutorial.check()
+	_refresh_tutorial()
+
+
+## Start it again from the top — the "?" button, and Settings.
+func _restart_tutorial() -> void:
+	EditorTutorial.forget()
+	_tutorial = null
+	_start_tutorial_if_wanted()
+	if _tutorial == null:
+		# Only happens on a track that is already built: the walk wants an empty
+		# grid, and half of it would be ticked off before the first sentence.
+		_flash("The walkthrough starts on an empty track — press New in the menu.")
+
+
+func _refresh_tutorial() -> void:
+	if _tutorial == null:
+		return
+	if _tutorial.finished:
+		# Finishing earns the closing line; skipping does not. The flag is set only
+		# by the last step, and it is waiting for the editor to come back from the
+		# test drive that step asks for.
+		if GameState.editor_tutorial_finale:
+			_show_tutorial_panel(EditorTutorial.FINALE, 0)
+		else:
+			_close_tutorial_panel()
+		_tutorial = null
+		return
+	_show_tutorial_panel(_tutorial.text(), _tutorial.step_number())
+	_pulsed = _buttons_for(_tutorial.highlight())
+
+
+## The panel at the bottom of the screen. `step` of 0 means the closing line, which
+## has no number and no Skip — only a way to dismiss it.
+func _show_tutorial_panel(text: String, step: int) -> void:
+	if _tutorial_panel != null:
+		_tutorial_panel.queue_free()
+	_clear_pulse()
+
+	var panel := PanelContainer.new()
+	panel.anchor_left = 0.5
+	panel.anchor_right = 0.5
+	panel.anchor_top = 1.0
+	panel.anchor_bottom = 1.0
+	panel.offset_left = -330
+	panel.offset_right = 330
+	panel.offset_top = -104
+	panel.offset_bottom = -18
+	panel.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	panel.theme = MenuUI.build_theme()
+
+	var pad := MarginContainer.new()
+	for side in ["left", "right", "top", "bottom"]:
+		pad.add_theme_constant_override("margin_" + side, 14)
+	panel.add_child(pad)
+
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 16)
+	pad.add_child(row)
+
+	var col := VBoxContainer.new()
+	col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	col.add_theme_constant_override("separation", 2)
+	if step > 0:
+		col.add_child(MenuUI.label("STEP %d OF 6" % step, 13, MenuUI.ACCENT))
+	var line := MenuUI.label(text, 18)
+	line.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	line.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	col.add_child(line)
+	row.add_child(col)
+
+	var dismiss := MenuUI.button("Skip" if step > 0 else "Got it", func() -> void:
+		if _tutorial != null:
+			_tutorial.skip()
+		_close_tutorial_panel(), "back")
+	dismiss.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	row.add_child(dismiss)
+
+	_ui_layer.add_child(panel)
+	_tutorial_panel = panel
+
+
+func _close_tutorial_panel() -> void:
+	_clear_pulse()
+	if _tutorial_panel != null:
+		_tutorial_panel.queue_free()
+		_tutorial_panel = null
+	_tutorial = null
+
+
+## The buttons a step is pointing at: a piece in the palette, the terrain row, or
+## Test Drive up in the corner.
+func _buttons_for(what: String) -> Array:
+	if what == "":
+		return []
+	if what == "terrain":
+		return _terrain_buttons.values()
+	if what == "test":
+		return [_test_btn] if _test_btn != null else []
+	for i in range(_library.ordered.size()):
+		if String(_library.ordered[i].id) == what:
+			return [_palette_buttons[i]]
+	return []
+
+
+func _clear_pulse() -> void:
+	for b in _pulsed:
+		(b as Button).modulate = Color.WHITE
+	_pulsed = []
+
+
+## Breathe on the highlighted buttons. Modulate is free for this — the palette
+## shows what is *selected* with button_pressed, not with tint.
+func _pulse(delta: float) -> void:
+	if _pulsed.is_empty():
+		return
+	_pulse_time += delta
+	var glow: float = 1.0 + 0.45 * (0.5 + 0.5 * sin(_pulse_time * 4.0))
+	for b in _pulsed:
+		(b as Button).modulate = Color(glow, glow, glow * 0.85)
 
 
 # --- Terrain ----------------------------------------------------------------
@@ -320,9 +466,9 @@ func _build_ui() -> void:
 	_import_btn.pressed.connect(_import_track)
 	actions.add_child(_import_btn)
 
-	var test_btn := _icon_button("test", "Test Drive")
-	test_btn.pressed.connect(_start_test_drive)
-	actions.add_child(test_btn)
+	_test_btn = _icon_button("test", "Test Drive")
+	_test_btn.pressed.connect(_start_test_drive)
+	actions.add_child(_test_btn)
 
 	var race_btn := _icon_button("race", "Race")
 	race_btn.pressed.connect(_start_race)
@@ -335,6 +481,10 @@ func _build_ui() -> void:
 	var export_btn := _icon_button("export", "Export to a file (choose name and location)")
 	export_btn.pressed.connect(_open_export_dialog)
 	actions.add_child(export_btn)
+
+	var help_btn := _icon_button("help", "Show the walkthrough again")
+	help_btn.pressed.connect(_restart_tutorial)
+	actions.add_child(help_btn)
 
 	var menu_btn := _icon_button("menu", "Main Menu")
 	menu_btn.pressed.connect(func() -> void:
@@ -398,6 +548,7 @@ func _build_ui() -> void:
 func _process(delta: float) -> void:
 	_handle_controller(delta)
 	_handle_pan(delta)
+	_pulse(delta)
 	# The controller drives the cell cursor directly; only fall back to the mouse
 	# ray-pick when the controller isn't steering.
 	if not _pad_cursor:
@@ -504,6 +655,8 @@ func _cycle_shape() -> void:
 		_prop_variant = (_prop_variant + 1) % PropGeo.VARIANTS
 	else:
 		_rotation = (_rotation + 1) % 4
+		if _tutorial != null:
+			_tutorial.rotated = true
 	_update_status()
 
 
@@ -1053,6 +1206,9 @@ func _rebuild_all_tiles() -> void:
 
 
 func _start_test_drive() -> void:
+	if _tutorial != null:
+		_tutorial.drove = true
+		_tutorial.check()
 	GameState.current_grid = _grid
 	GameState.return_scene = "res://scenes/editor/Editor.tscn"
 	get_tree().change_scene_to_file(PLAY_SCENE)
@@ -1249,7 +1405,10 @@ func _section(text: String) -> Label:
 func _terrain_button(icon_id: String, tooltip: String, type_index: int) -> Button:
 	var b := _icon_button(icon_id, tooltip)
 	b.toggle_mode = true
-	b.pressed.connect(func() -> void: _select_terrain(type_index))
+	b.pressed.connect(func() -> void:
+		if _tutorial != null:
+			_tutorial.picked_terrain = true
+		_select_terrain(type_index))
 	return b
 
 
@@ -1301,6 +1460,11 @@ func _current_def() -> TileDefinition:
 
 
 func _update_status(result: Dictionary = {}) -> void:
+	# The one place that already runs after every change to the track, which is why
+	# the first-run walk is polled from here rather than from signals the grid does
+	# not have.
+	if _tutorial != null:
+		_tutorial.check()
 	if _status_label == null:
 		return
 	var terrain_name: String = GameState.current_terrain.type_name() if GameState.current_terrain != null else "Flat"

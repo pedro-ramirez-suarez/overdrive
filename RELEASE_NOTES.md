@@ -11,7 +11,9 @@ Made with the Godot Engine 4.7.
 - **Modular track editor.** Snap together roads, curves, ramps, loops, a barrel-roll
   corkscrew, a spiral helix, overpasses, pipes, half-pipes, tunnels and crossroads
   on a grid, with live green/yellow/red connection feedback, undo/redo, and one-click
-  Test Drive. Guardrails keep you on the helix and overpass decks.
+  Test Drive. Guardrails keep you on the helix and overpass decks. New to it? A
+  six-step walkthrough builds a loop with you the first time in — one sentence at a
+  time, nothing forced, Skip always on screen.
 - **Sculptable terrain.** Flat, Plains, Hills, Lakes or Mountains (with re-roll), plus
   raise / lower / level / lake tools over 96 m of vertical range — enough for a real
   mountain pass. The track drapes over the ground.

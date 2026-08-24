@@ -311,6 +311,12 @@ static func _glyph(id: String) -> Array:
 			return [_seg(0.16, 0.28, 0.84, 0.28, 0.11),
 				_seg(0.16, 0.5, 0.84, 0.5, 0.11),
 				_seg(0.16, 0.72, 0.84, 0.72, 0.11)]
+		"help":
+			# A question mark: the hook, its stem, and the dot under it.
+			return [_arc(0.5, 0.33, 0.17, -PI, PI * 0.45, 0.1),
+				_seg(0.62, 0.45, 0.5, 0.62, 0.1),
+				_seg(0.5, 0.62, 0.5, 0.68, 0.1),
+				_seg(0.5, 0.82, 0.5, 0.86, 0.12, ACCENT)]
 		_:
 			return [_seg(0.2, 0.2, 0.8, 0.8, 0.1, DIM), _seg(0.8, 0.2, 0.2, 0.8, 0.1, DIM)]
 

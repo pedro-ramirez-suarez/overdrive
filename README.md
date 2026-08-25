@@ -34,7 +34,7 @@ Made with the [Godot Engine](https://godotengine.org) 4.7.
   send it to someone, and race their line on a track they have never seen.
 - **Play your way** — keyboard or Xbox/Bluetooth controller, in the game *and* the
   editor.
-- **Thirteen tracks to start** — five hand-built stunt circuits, plus eight
+- **Fourteen tracks to start** — six hand-built stunt circuits, plus eight
   [inspired by real places](#tracks) and laid out from map and elevation data —
   and everything you build yourself.
 
@@ -86,9 +86,13 @@ tile.
 
 ## Tracks
 
-Thirteen ship with the game. Five are hand-built stunt circuits — Sample Oval,
-fast, Test Track, Serpentine Ridge and Alpine Pass — the kind of thing the editor
-is for.
+Fourteen ship with the game. Six are hand-built stunt circuits — Sample Oval,
+fast, Test Track, Serpentine Ridge, Alpine Pass and Emerald Sound — the kind of
+thing the editor is for. **Emerald Sound** is the big one: a 3.4 km city lap
+around a sound, a ship canal and a lake, taking in a barrel roll, a loop, a
+spiral, a bridge, a jump and a flyover over its own start straight. It is
+inspired by Seattle rather than traced from it — see
+[`tools/citygen/`](tools/citygen/README.md).
 
 **The other eight are inspired by real places.** A generator traces a lap out of
 OpenStreetMap, fits it to the 8 m tile grid, and sculpts the ground under it from

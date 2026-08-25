@@ -17,6 +17,7 @@ const BUNDLED := [
 	"res://tracks/test_track.json",
 	"res://tracks/serpentine_ridge.json",
 	"res://tracks/alpine_pass.json",
+	"res://tracks/emerald_sound.json",
 	"res://tracks/tres_marias.json",
 	"res://tracks/eifelschleife.json",
 	"res://tracks/spaa_francorchant.json",

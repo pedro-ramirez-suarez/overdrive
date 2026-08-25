@@ -36,8 +36,10 @@ Made with the Godot Engine 4.7.
   camera angles (including a close "Action" cam), and a live arc speedometer.
 - **Play how you like.** Full keyboard **and** Xbox / Bluetooth controller support —
   in the game *and* the editor.
-- **Thirteen tracks to start.** Five are hand-built stunt circuits — Sample Oval, fast,
-  Test Track, Serpentine Ridge and Alpine Pass. The other eight are **inspired by real
+- **Fourteen tracks to start.** Six are hand-built stunt circuits — Sample Oval, fast,
+  Test Track, Serpentine Ridge, Alpine Pass and **Emerald Sound**, a 3.4 km city lap
+  around a sound, a ship canal and a lake, with a barrel roll, a loop, a spiral, a
+  bridge, a jump and a flyover over its own start straight. The other eight are **inspired by real
   places**, traced from map data and given the real ground under them: **Tres Marías**
   (Morelia, Michoacán), **Eifelschleife** (the Eifel forest circuit), **Spaa
   Francorchant** (the Ardennes), **Zuzuka** (the Japanese figure-of-eight, bridge and

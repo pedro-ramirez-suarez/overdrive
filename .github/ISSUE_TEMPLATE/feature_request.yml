@@ -1,0 +1,19 @@
+name: Idea
+description: A tile, a car, an editor tool, a mode — something you wish it did.
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: idea
+    attributes:
+      label: The idea
+    validations:
+      required: true
+  - type: textarea
+    id: why
+    attributes:
+      label: What it would let you do
+      description: |
+        The use case matters more than the feature. "I want to build a hill climb
+        that does not loop back" tells us more than "add point-to-point tracks".
+    validations:
+      required: true

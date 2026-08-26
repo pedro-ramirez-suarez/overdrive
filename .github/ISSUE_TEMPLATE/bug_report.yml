@@ -1,0 +1,54 @@
+name: Bug report
+description: Something behaves wrongly — a car, a track, the editor, a race.
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time. A screenshot or a short clip is worth a lot
+        here — most of this game's bugs are things you can see.
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: And what you expected instead.
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: How to reproduce it
+      placeholder: |
+        1. Race on Serpentine Ridge with the Stomper
+        2. Take the corkscrew at full speed
+        3. The car is reset back to the start
+    validations:
+      required: true
+  - type: dropdown
+    id: how
+    attributes:
+      label: How are you running it?
+      options:
+        - Downloaded Windows build
+        - From source in the Godot editor
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: The release tag, or the commit if you built from source.
+      placeholder: v1.0.0
+  - type: input
+    id: track
+    attributes:
+      label: Track and car
+      description: If it only happens on one of them, that is usually the clue.
+      placeholder: Alpine Pass, Pursuit S
+  - type: textarea
+    id: extra
+    attributes:
+      label: Screenshot, clip, or the track file
+      description: |
+        Drag files in. For a track-specific bug, the `.json` from the editor's
+        Export button is the fastest way for someone to reproduce it.

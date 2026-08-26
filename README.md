@@ -10,6 +10,14 @@ Made with the [Godot Engine](https://godotengine.org) 4.7.
 > ramps, loops, corkscrews, helixes, overpasses, pipes and tunnels over sculptable
 > terrain, then drive what you built.
 
+<!-- ────────────────────────────────────────────────────────────────────────────
+     DEMO MEDIA — uncomment the line below once docs/media/demo.gif exists.
+     Record a clip, then:
+       tools/media/make-demo.sh capture.mp4 --start 00:00:04 --duration 15
+     See tools/media/README.md for the full recipe and the suggested shot list.
+     ──────────────────────────────────────────────────────────────────────────── -->
+<!-- ![OVERDRIVE — building a track, then driving it](docs/media/demo.gif) -->
+
 ## Features
 
 - **Modular track editor** — place and rotate tiles on a grid with live

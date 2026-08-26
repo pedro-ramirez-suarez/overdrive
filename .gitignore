@@ -22,3 +22,8 @@ tools/trackgen/out/
 .DS_Store
 Thumbs.db
 *.swp
+
+# Raw screen/gameplay captures. The processed demo.gif / demo.mp4 under
+# docs/media/ ARE committed — these are the multi-hundred-MB originals.
+/captures/
+*.avi

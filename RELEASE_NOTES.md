@@ -18,7 +18,9 @@ Made with the Godot Engine 4.7.
   raise / lower / level / lake tools over 96 m of vertical range — enough for a real
   mountain pass. The track drapes over the ground.
 - **Real stunt driving.** Track-relative gravity pins the car through loops and rolls;
-  ramps launch you into a natural arc; banked curves let you carry speed.
+  ramps launch you into a natural arc; banked curves let you carry speed; and the
+  **handbrake** (Space / A) breaks the rear loose so you can pivot the nose into a
+  hairpin and drift it round.
 - **Race weekend, your way.** Countdown start, AI opponents, laps and checkpoints,
   live position and a wrong-way warning. Choose lap count, number of opponents, time
   of day, weather — and even race the circuit **in reverse**.

@@ -4,10 +4,13 @@
 export.cfg
 export_presets.cfg
 
-# Godot exports
+# Godot exports. The whole export/ tree is build output — the Linux binary and
+# macOS bundle carry no extension the patterns below would catch.
+/export/
 *.exe
 *.pck
 *.zip
+*.tar.gz
 
 # Mono/C# (unused, but safe)
 .mono/

@@ -66,7 +66,8 @@ tile.
 ## Downloads
 
 - **Windows** — download, unzip, run `OVERDRIVE.exe`.
-- _(Linux and macOS builds: TODO)_
+- **Linux (x86_64)** — download, extract, run `./OVERDRIVE.x86_64`.
+- _(macOS build: TODO)_
 
 No installer, no account, no data collected — it's a single self-contained game.
 
